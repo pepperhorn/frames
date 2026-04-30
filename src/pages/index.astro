@@ -1,0 +1,44 @@
+---
+import { ChordGallery } from "@/components/ChordGallery";
+import "@/styles/globals.css";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>SVGuitar — Astro Demo</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <main class="page-main mx-auto max-w-5xl px-6 py-16">
+      <header class="page-header mb-12 flex flex-col gap-3">
+        <span class="page-eyebrow text-sm font-medium uppercase tracking-widest text-muted-foreground">
+          Astro · Tailwind · shadcn/ui
+        </span>
+        <h1 class="page-title text-5xl font-bold tracking-tight">
+          SVGuitar Chord Charts
+        </h1>
+        <p class="page-subtitle max-w-2xl text-lg text-muted-foreground">
+          A minimal Astro site wrapping{" "}
+          <a
+            class="page-link underline underline-offset-4 hover:text-foreground"
+            href="https://github.com/omnibrain/svguitar"
+            target="_blank"
+            rel="noreferrer"
+          >
+            svguitar
+          </a>{" "}
+          — a tiny library for rendering beautiful SVG guitar chord diagrams.
+        </p>
+      </header>
+
+      <ChordGallery client:load />
+
+      <footer class="page-footer mt-16 border-t pt-6 text-sm text-muted-foreground">
+        Built with Astro {Astro.generator.replace("Astro v", "")}.
+      </footer>
+    </main>
+  </body>
+</html>
