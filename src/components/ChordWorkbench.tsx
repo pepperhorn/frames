@@ -196,24 +196,77 @@ export function ChordWorkbench() {
   const stringRows = Array.from({ length: inst.strings }, (_, i) => i + 1);
 
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const downloadSvg = () => {
+
+  const getSvgSource = (): { source: string; width: number; height: number } | null => {
     const svg = previewRef.current?.querySelector("svg");
-    if (!svg) return;
-    const clone = svg.cloneNode(true) as SVGElement;
+    if (!svg) return null;
+    const clone = svg.cloneNode(true) as SVGSVGElement;
     if (!clone.getAttribute("xmlns")) {
       clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     }
-    const source = new XMLSerializer().serializeToString(clone);
-    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    const bbox = svg.getBoundingClientRect();
+    const vb = svg.getAttribute("viewBox")?.split(/[\s,]+/).map(Number);
+    const width = vb && vb.length === 4 ? vb[2] : bbox.width || 400;
+    const height = vb && vb.length === 4 ? vb[3] : bbox.height || 500;
+    return {
+      source: new XMLSerializer().serializeToString(clone),
+      width,
+      height,
+    };
+  };
+
+  const filename = (ext: string) => {
     const safeTitle = (chord.title || "chord").replace(/[^\w\-]+/g, "_");
+    const safeInstrument = inst.label.replace(/[^\w\-]+/g, "_");
+    return `${safeTitle}-${safeInstrument}.${ext}`;
+  };
+
+  const triggerDownload = (href: string, name: string) => {
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `${safeTitle}.svg`;
+    a.href = href;
+    a.download = name;
     document.body.appendChild(a);
     a.click();
     a.remove();
+  };
+
+  const downloadSvg = () => {
+    const data = getSvgSource();
+    if (!data) return;
+    const blob = new Blob([data.source], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, filename("svg"));
     URL.revokeObjectURL(url);
+  };
+
+  const downloadPng = () => {
+    const data = getSvgSource();
+    if (!data) return;
+    const scale = 3;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(data.width * scale);
+    canvas.height = Math.round(data.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = new Image();
+    const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(data.source)}`;
+    img.onload = () => {
+      if (settings.backgroundColor && settings.backgroundColor !== "transparent") {
+        ctx.fillStyle = settings.backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        triggerDownload(url, filename("png"));
+        URL.revokeObjectURL(url);
+      }, "image/png");
+    };
+    img.onerror = () => {
+      console.error("Failed to load SVG for PNG export");
+    };
+    img.src = svgUrl;
   };
 
   return (
@@ -593,9 +646,14 @@ export function ChordWorkbench() {
         <Card className="preview-card">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-lg">Preview</CardTitle>
-            <Button size="sm" variant="outline" onClick={downloadSvg} className="download-svg-btn">
-              Download SVG
-            </Button>
+            <div className="download-buttons flex gap-2">
+              <Button size="sm" variant="outline" onClick={downloadSvg} className="download-svg-btn">
+                SVG
+              </Button>
+              <Button size="sm" variant="outline" onClick={downloadPng} className="download-png-btn">
+                PNG
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div ref={previewRef} className="preview-svg-wrap">
