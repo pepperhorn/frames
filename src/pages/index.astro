@@ -1,5 +1,5 @@
 ---
-import { ChordWorkbench } from "@/components/ChordWorkbench";
+import { Workbench } from "@/components/Workbench";
 import "@/styles/globals.css";
 ---
 
@@ -18,14 +18,14 @@ import "@/styles/globals.css";
           Creative Ranges Foundation
         </span>
         <h1 class="page-title text-5xl font-bold tracking-tight">
-          Build Your Own Guitar Chord Frames
+          Build Your Own Guitar Frames
         </h1>
         <p class="page-subtitle max-w-2xl text-lg text-muted-foreground">
-          Use the builder below to build your own custom frames for practice, work sheets and more!
+          Build chord frames or scale / melody visualizations for practice, work sheets, and more.
         </p>
       </header>
 
-      <ChordWorkbench client:load />
+      <Workbench client:load />
 
       <footer class="page-footer mt-16 border-t pt-6 text-sm text-muted-foreground">
         Built with Astro {Astro.generator.replace("Astro v", "")}.
