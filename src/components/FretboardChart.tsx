@@ -11,10 +11,27 @@ export interface TextShadow {
   color: string;
 }
 
-export interface TextStyle {
+export interface RoleStyle {
   fontWeight?: FontWeight;
   fontStyle?: FontStyle;
-  shadow?: TextShadow | null;
+}
+
+export interface TextStyle {
+  dot?: RoleStyle & { shadow?: TextShadow | null };
+  title?: RoleStyle;
+  fretLabel?: RoleStyle;
+  tuning?: RoleStyle;
+}
+
+type Role = "dot" | "title" | "fretLabel" | "tuning";
+
+function roleFor(el: SVGTextElement): Role | null {
+  const cl = el.classList;
+  if (cl.contains("finger-text")) return "dot";
+  if (cl.contains("title")) return "title";
+  if (cl.contains("fret-position")) return "fretLabel";
+  if (cl.contains("tuning")) return "tuning";
+  return null;
 }
 
 interface FretboardChartProps {
@@ -46,59 +63,86 @@ export function FretboardChart({
       })
       .chord(chord)
       .draw();
+
     const svg = el.querySelector("svg");
     if (svg) {
       const family = settings?.fontFamily ?? "Poppins, sans-serif";
-      const shadow = textStyle?.shadow;
-      const shadowCss = shadow
-        ? `drop-shadow(${shadow.offsetX}px ${shadow.offsetY}px ${shadow.blur}px ${shadow.color})`
-        : null;
       const allTexts = Array.from(svg.querySelectorAll("text")) as SVGTextElement[];
 
-      // Re-center finger labels via real text-anchor before changing the font.
-      // The handdrawn renderer pre-shifts x by bbox.width/2 using Patrick Hand
-      // metrics; that math breaks once we swap fonts, so multi-char labels like
-      // "D#" drift off the dot. Reading the rendered bbox and pinning x to its
-      // visual center, then setting text-anchor:middle, makes the alignment
-      // robust to any post-render font swap.
+      // Capture each middle-aligned text's visual center BEFORE swapping font.
+      // svguitar's handdrawn renderer pre-shifts x by bbox.width/2 using
+      // Patrick Hand metrics; once we change fonts that math breaks. Pinning
+      // via real text-anchor:middle around the captured center keeps every
+      // role aligned (finger labels, title, "Nfr" position, tuning labels).
+      const centers = new Map<SVGTextElement, number>();
       allTexts.forEach((t) => {
-        if (!t.classList.contains("finger-text")) return;
+        if (t.getAttribute("align") !== "middle") return;
         try {
           const b = t.getBBox();
-          if (b.width > 0) {
-            const cx = b.x + b.width / 2;
-            t.setAttribute("text-anchor", "middle");
-            t.setAttribute("x", String(cx));
-          }
+          if (b.width > 0) centers.set(t, b.x + b.width / 2);
         } catch {
-          /* getBBox can throw if the element is not yet laid out */
+          /* element not yet laid out */
         }
       });
+
+      const dotShadow = textStyle?.dot?.shadow ?? null;
+      const shadowCss = dotShadow
+        ? `drop-shadow(${dotShadow.offsetX}px ${dotShadow.offsetY}px ${dotShadow.blur}px ${dotShadow.color})`
+        : null;
 
       allTexts.forEach((t) => {
         // Force font-family on every text node so the handdrawn style's
         // hard-coded Patrick Hand can be overridden by the user's choice.
         t.setAttribute("font-family", family);
-        if (textStyle?.fontWeight) {
-          t.setAttribute("font-weight", textStyle.fontWeight);
-        }
-        if (textStyle?.fontStyle) {
-          t.setAttribute("font-style", textStyle.fontStyle);
-        }
 
-        // Shadow is only meaningful on dot labels — applying it to the title or
-        // tuning text creates visual noise.
-        const isFingerText = t.classList.contains("finger-text");
+        const role = roleFor(t);
+        const roleStyle: RoleStyle | undefined = role ? textStyle?.[role] : undefined;
+        if (roleStyle?.fontWeight) t.setAttribute("font-weight", roleStyle.fontWeight);
+        if (roleStyle?.fontStyle) t.setAttribute("font-style", roleStyle.fontStyle);
+
+        // Shadow only on dot labels — applying it to title / tuning / fret
+        // marker creates visual noise.
+        const isDot = role === "dot";
         const existingStyle = t.getAttribute("style") ?? "";
         const cleaned = existingStyle.replace(/filter\s*:\s*drop-shadow\([^)]*\);?/g, "");
-        if (shadowCss && isFingerText) {
+        if (shadowCss && isDot) {
           const sep = cleaned && !cleaned.endsWith(";") ? ";" : "";
           t.setAttribute("style", `${cleaned}${sep}filter:${shadowCss}`);
         } else if (cleaned !== existingStyle) {
           t.setAttribute("style", cleaned);
         }
       });
+
+      // Re-center after font/weight changes.
+      centers.forEach((cx, t) => {
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("x", String(cx));
+      });
+
+      // Auto-shrink title if it overflows the viewBox after font swap.
+      const title = svg.querySelector("text.title") as SVGTextElement | null;
+      const vbWidth =
+        svg.viewBox?.baseVal?.width || svg.getBoundingClientRect().width || 0;
+      if (title && vbWidth > 0) {
+        const limit = vbWidth * 0.95;
+        let attempts = 0;
+        while (attempts < 6) {
+          let bbox: DOMRect | null = null;
+          try {
+            bbox = title.getBBox();
+          } catch {
+            break;
+          }
+          if (!bbox || bbox.width <= limit) break;
+          const current = parseFloat(title.getAttribute("font-size") ?? "48") || 48;
+          const next = Math.max(8, current * (limit / bbox.width) * 0.97);
+          if (next >= current - 0.5) break;
+          title.setAttribute("font-size", String(next));
+          attempts += 1;
+        }
+      }
     }
+
     return () => {
       el.innerHTML = "";
     };
