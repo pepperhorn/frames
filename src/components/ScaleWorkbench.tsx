@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { Chord, ChordSettings, Finger, FingerOptions } from "svguitar";
-import { FretboardChart } from "./FretboardChart";
+import { FretboardChart, type FontStyle, type FontWeight, type TextStyle } from "./FretboardChart";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -118,6 +118,10 @@ export function ScaleWorkbench() {
     strokeWidth: 2,
     style: "normal" as ChordSettings["style"],
   }));
+  const [textStyle, setTextStyle] = useState<TextStyle>({
+    fontWeight: "600",
+    fontStyle: "normal",
+  });
 
   const positions = useMemo(() => POSITIONS[scale] ?? [], [scale]);
   const hasPositions = positions.length > 0;
@@ -657,6 +661,33 @@ export function ScaleWorkbench() {
                 onChange={(e) => setSettings({ ...settings, fontFamily: e.target.value })}
               />
             </Label>
+            <Label>
+              <span>Font weight</span>
+              <Select
+                value={textStyle.fontWeight ?? "600"}
+                onChange={(e) =>
+                  setTextStyle({ ...textStyle, fontWeight: e.target.value as FontWeight })
+                }
+              >
+                <option value="400">400 — regular</option>
+                <option value="500">500 — medium</option>
+                <option value="600">600 — semibold</option>
+                <option value="700">700 — bold</option>
+                <option value="800">800 — extrabold</option>
+              </Select>
+            </Label>
+            <Label>
+              <span>Font style</span>
+              <Select
+                value={textStyle.fontStyle ?? "normal"}
+                onChange={(e) =>
+                  setTextStyle({ ...textStyle, fontStyle: e.target.value as FontStyle })
+                }
+              >
+                <option value="normal">normal</option>
+                <option value="italic">italic</option>
+              </Select>
+            </Label>
           </CardContent>
         </Card>
       </div>
@@ -679,6 +710,7 @@ export function ScaleWorkbench() {
               <FretboardChart
                 chord={chord}
                 settings={{ ...settings, frets: frame.fretSpan }}
+                textStyle={textStyle}
                 className="preview-chart flex justify-center"
               />
             </div>
