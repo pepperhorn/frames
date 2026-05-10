@@ -69,17 +69,42 @@ export function FretboardChart({
       const family = settings?.fontFamily ?? "Poppins, sans-serif";
       const allTexts = Array.from(svg.querySelectorAll("text")) as SVGTextElement[];
 
-      // Capture each middle-aligned text's visual center BEFORE swapping font.
-      // svguitar's handdrawn renderer pre-shifts x by bbox.width/2 using
-      // Patrick Hand metrics; once we change fonts that math breaks. Pinning
-      // via real text-anchor:middle around the captured center keeps every
-      // role aligned (finger labels, title, "Nfr" position, tuning labels).
-      const centers = new Map<SVGTextElement, number>();
+      // Capture each text's visual anchor point and vertical center BEFORE
+      // swapping font. svguitar's handdrawn renderer pre-shifts x and y using
+      // Patrick Hand metrics; once we change fonts that math breaks for every
+      // text. Pinning via real text-anchor + dominant-baseline keeps every
+      // role aligned (finger labels, title, fret position, tuning labels)
+      // both horizontally and vertically.
+      type AnchorInfo = {
+        anchor: "start" | "middle" | "end";
+        anchorX: number;
+        cy: number;
+      };
+      const anchors = new Map<SVGTextElement, AnchorInfo>();
       allTexts.forEach((t) => {
-        if (t.getAttribute("align") !== "middle") return;
         try {
           const b = t.getBBox();
-          if (b.width > 0) centers.set(t, b.x + b.width / 2);
+          if (b.width <= 0) return;
+          const align = t.getAttribute("align");
+          if (align === "middle") {
+            anchors.set(t, {
+              anchor: "middle",
+              anchorX: b.x + b.width / 2,
+              cy: b.y + b.height / 2,
+            });
+          } else if (align === "right") {
+            anchors.set(t, {
+              anchor: "end",
+              anchorX: b.x + b.width,
+              cy: b.y + b.height / 2,
+            });
+          } else {
+            anchors.set(t, {
+              anchor: "start",
+              anchorX: b.x,
+              cy: b.y + b.height / 2,
+            });
+          }
         } catch {
           /* element not yet laid out */
         }
@@ -113,10 +138,12 @@ export function FretboardChart({
         }
       });
 
-      // Re-center after font/weight changes.
-      centers.forEach((cx, t) => {
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("x", String(cx));
+      // Re-anchor after font/weight changes.
+      anchors.forEach(({ anchor, anchorX, cy }, t) => {
+        t.setAttribute("text-anchor", anchor);
+        t.setAttribute("x", String(anchorX));
+        t.setAttribute("dominant-baseline", "central");
+        t.setAttribute("y", String(cy));
       });
 
       // Auto-shrink title if it overflows the viewBox after font swap.
