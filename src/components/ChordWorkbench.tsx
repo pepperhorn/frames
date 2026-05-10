@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import type { Chord, ChordSettings, Barre, Finger } from "svguitar";
 import { ChordChart } from "./ChordChart";
-import type { FontStyle, FontWeight, TextStyle } from "./FretboardChart";
+import type { FontStyle, FontWeight, TextShadow, TextStyle } from "./FretboardChart";
+import { FONT_OPTIONS } from "@/lib/fontOptions";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -125,7 +126,13 @@ export function ChordWorkbench() {
   const [textStyle, setTextStyle] = useState<TextStyle>({
     fontWeight: "600",
     fontStyle: "normal",
+    shadow: null,
   });
+  const updateShadow = (patch: Partial<TextShadow>) =>
+    setTextStyle((ts) => ({
+      ...ts,
+      shadow: { offsetX: 1, offsetY: 1, blur: 2, color: "#00000080", ...(ts.shadow ?? {}), ...patch },
+    }));
 
   const handleInstrumentChange = (next: InstrumentId) => {
     setInstrumentId(next);
@@ -581,10 +588,16 @@ export function ChordWorkbench() {
             </Label>
             <Label className="col-span-2">
               <span>Font family</span>
-              <Input
+              <Select
                 value={settings.fontFamily ?? "Poppins, sans-serif"}
                 onChange={(e) => setSettings({ ...settings, fontFamily: e.target.value })}
-              />
+              >
+                {FONT_OPTIONS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </Select>
             </Label>
             <Label>
               <span>Font weight</span>
@@ -614,6 +627,67 @@ export function ChordWorkbench() {
               </Select>
             </Label>
           </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-lg">Text Shadow</CardTitle>
+            <Button
+              size="sm"
+              variant={textStyle.shadow ? "default" : "outline"}
+              onClick={() =>
+                setTextStyle((ts) => ({
+                  ...ts,
+                  shadow: ts.shadow
+                    ? null
+                    : { offsetX: 1, offsetY: 1, blur: 2, color: "#00000080" },
+                }))
+              }
+            >
+              {textStyle.shadow ? "On" : "Off"}
+            </Button>
+          </CardHeader>
+          {textStyle.shadow && (
+            <CardContent className="grid grid-cols-2 gap-3">
+              <Label>
+                <span>Offset X</span>
+                <Input
+                  type="number"
+                  step={0.5}
+                  value={textStyle.shadow.offsetX}
+                  onChange={(e) => updateShadow({ offsetX: Number(e.target.value) || 0 })}
+                />
+              </Label>
+              <Label>
+                <span>Offset Y</span>
+                <Input
+                  type="number"
+                  step={0.5}
+                  value={textStyle.shadow.offsetY}
+                  onChange={(e) => updateShadow({ offsetY: Number(e.target.value) || 0 })}
+                />
+              </Label>
+              <Label>
+                <span>Blur</span>
+                <Input
+                  type="number"
+                  step={0.5}
+                  min={0}
+                  value={textStyle.shadow.blur}
+                  onChange={(e) => updateShadow({ blur: Math.max(0, Number(e.target.value) || 0) })}
+                />
+              </Label>
+              <Label>
+                <span>Color</span>
+                <Input
+                  type="color"
+                  className="h-9 p-1"
+                  value={textStyle.shadow.color.length === 7 ? textStyle.shadow.color : "#000000"}
+                  onChange={(e) => updateShadow({ color: e.target.value })}
+                />
+              </Label>
+            </CardContent>
+          )}
         </Card>
       </div>
 

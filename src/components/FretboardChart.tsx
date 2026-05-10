@@ -4,9 +4,17 @@ import { SVGuitarChord, type ChordSettings, type Chord } from "svguitar";
 export type FontWeight = "400" | "500" | "600" | "700" | "800";
 export type FontStyle = "normal" | "italic";
 
+export interface TextShadow {
+  offsetX: number;
+  offsetY: number;
+  blur: number;
+  color: string;
+}
+
 export interface TextStyle {
   fontWeight?: FontWeight;
   fontStyle?: FontStyle;
+  shadow?: TextShadow | null;
 }
 
 interface FretboardChartProps {
@@ -38,19 +46,33 @@ export function FretboardChart({
       })
       .chord(chord)
       .draw();
-    if (textStyle) {
-      const svg = el.querySelector("svg");
-      if (svg) {
-        const texts = svg.querySelectorAll("text");
-        texts.forEach((t) => {
-          if (textStyle.fontWeight) {
-            t.setAttribute("font-weight", textStyle.fontWeight);
-          }
-          if (textStyle.fontStyle) {
-            t.setAttribute("font-style", textStyle.fontStyle);
-          }
-        });
-      }
+    const svg = el.querySelector("svg");
+    if (svg) {
+      const family = settings?.fontFamily ?? "Poppins, sans-serif";
+      const shadow = textStyle?.shadow;
+      const shadowCss = shadow
+        ? `drop-shadow(${shadow.offsetX}px ${shadow.offsetY}px ${shadow.blur}px ${shadow.color})`
+        : null;
+      const texts = svg.querySelectorAll("text");
+      texts.forEach((t) => {
+        // Force font-family on every text node so the handdrawn style's
+        // hard-coded Patrick Hand can be overridden by the user's choice.
+        t.setAttribute("font-family", family);
+        if (textStyle?.fontWeight) {
+          t.setAttribute("font-weight", textStyle.fontWeight);
+        }
+        if (textStyle?.fontStyle) {
+          t.setAttribute("font-style", textStyle.fontStyle);
+        }
+        const existingStyle = t.getAttribute("style") ?? "";
+        const cleaned = existingStyle.replace(/filter\s*:\s*drop-shadow\([^)]*\);?/g, "");
+        if (shadowCss) {
+          const sep = cleaned && !cleaned.endsWith(";") ? ";" : "";
+          t.setAttribute("style", `${cleaned}${sep}filter:${shadowCss}`);
+        } else if (cleaned !== existingStyle) {
+          t.setAttribute("style", cleaned);
+        }
+      });
     }
     return () => {
       el.innerHTML = "";
