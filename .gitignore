@@ -22,3 +22,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# exported chord/scale frames at the repo root
+/*.png
+/*.svg
