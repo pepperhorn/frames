@@ -67,48 +67,65 @@ export function FretboardChart({
     const svg = el.querySelector("svg");
     if (svg) {
       const family = settings?.fontFamily ?? "Poppins, sans-serif";
+      const isHanddrawn = settings?.style === "handdrawn";
       const allTexts = Array.from(svg.querySelectorAll("text")) as SVGTextElement[];
 
-      // Capture each text's visual anchor point and vertical center BEFORE
-      // swapping font. svguitar's handdrawn renderer pre-shifts x and y using
-      // Patrick Hand metrics; once we change fonts that math breaks for every
-      // text. Pinning via real text-anchor + dominant-baseline keeps every
-      // role aligned (finger labels, title, fret position, tuning labels)
-      // both horizontally and vertically.
+      // Re-anchoring is ONLY needed for handdrawn mode. The handdrawn renderer
+      // (RoughJsRenderer) builds raw <text> nodes whose x/y were pre-shifted
+      // using Patrick Hand metrics; once the font swaps, those offsets drift.
+      // Normal mode (SvgJsRenderer) uses native SVG text-anchor +
+      // dominant-baseline:central via SVG.js tspans — touching y on the parent
+      // breaks tspan positioning, so we leave it alone.
       type AnchorInfo = {
         anchor: "start" | "middle" | "end";
         anchorX: number;
         cy: number;
       };
       const anchors = new Map<SVGTextElement, AnchorInfo>();
-      allTexts.forEach((t) => {
-        try {
-          const b = t.getBBox();
-          if (b.width <= 0) return;
-          const align = t.getAttribute("align");
-          if (align === "middle") {
-            anchors.set(t, {
-              anchor: "middle",
-              anchorX: b.x + b.width / 2,
-              cy: b.y + b.height / 2,
-            });
-          } else if (align === "right") {
-            anchors.set(t, {
-              anchor: "end",
-              anchorX: b.x + b.width,
-              cy: b.y + b.height / 2,
-            });
-          } else {
-            anchors.set(t, {
-              anchor: "start",
-              anchorX: b.x,
-              cy: b.y + b.height / 2,
-            });
+      if (isHanddrawn) {
+        allTexts.forEach((t) => {
+          try {
+            const b = t.getBBox();
+            if (b.width <= 0) return;
+            const align = t.getAttribute("align");
+            if (align === "middle") {
+              anchors.set(t, {
+                anchor: "middle",
+                anchorX: b.x + b.width / 2,
+                cy: b.y + b.height / 2,
+              });
+            } else if (align === "right") {
+              anchors.set(t, {
+                anchor: "end",
+                anchorX: b.x + b.width,
+                cy: b.y + b.height / 2,
+              });
+            } else {
+              anchors.set(t, {
+                anchor: "start",
+                anchorX: b.x,
+                cy: b.y + b.height / 2,
+              });
+            }
+          } catch {
+            /* element not yet laid out */
           }
-        } catch {
-          /* element not yet laid out */
+        });
+
+        // Snap the fret-position label's y to the topmost dot's y so it sits
+        // on the dot row center instead of the top of the fret cell.
+        const fretPos = svg.querySelector("text.fret-position") as SVGTextElement | null;
+        if (fretPos && anchors.has(fretPos)) {
+          const dotCYs = allTexts
+            .filter((t) => t.classList.contains("finger-text") && anchors.has(t))
+            .map((t) => anchors.get(t)!.cy);
+          if (dotCYs.length > 0) {
+            const topDotCy = Math.min(...dotCYs);
+            const cur = anchors.get(fretPos)!;
+            anchors.set(fretPos, { ...cur, cy: topDotCy });
+          }
         }
-      });
+      }
 
       const dotShadow = textStyle?.dot?.shadow ?? null;
       const shadowCss = dotShadow
