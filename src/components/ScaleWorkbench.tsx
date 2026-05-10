@@ -63,9 +63,19 @@ function frameToChord(
     const labelOverride = dot.label;
     const label =
       labelOverride !== undefined ? labelOverride : autoLabelFor(dot, frame, context);
-    const color = dot.color ?? (dot.isRoot ? frame.rootColor : frame.noteColor);
+    const color =
+      dot.color ??
+      (dot.isHighlight
+        ? frame.highlightColor
+        : dot.isRoot
+        ? frame.rootColor
+        : frame.noteColor);
     const shape = dot.shape ?? "circle";
-    const needsOptions = dot.color !== undefined || dot.shape !== undefined || dot.isRoot;
+    const needsOptions =
+      dot.color !== undefined ||
+      dot.shape !== undefined ||
+      dot.isRoot ||
+      dot.isHighlight;
 
     if (needsOptions) {
       const opts: FingerOptions = {
@@ -385,7 +395,7 @@ export function ScaleWorkbench() {
               ))}
             </div>
 
-            <div className="gen-colors grid grid-cols-2 gap-3">
+            <div className="gen-colors grid grid-cols-3 gap-3">
               <Label>
                 <span>Root color</span>
                 <Input
@@ -402,6 +412,17 @@ export function ScaleWorkbench() {
                   className="h-9 p-1"
                   value={frame.noteColor}
                   onChange={(e) => setFrame((f) => ({ ...f, noteColor: e.target.value }))}
+                />
+              </Label>
+              <Label>
+                <span>Highlight color</span>
+                <Input
+                  type="color"
+                  className="h-9 p-1"
+                  value={frame.highlightColor}
+                  onChange={(e) =>
+                    setFrame((f) => ({ ...f, highlightColor: e.target.value }))
+                  }
                 />
               </Label>
             </div>
@@ -430,13 +451,14 @@ export function ScaleWorkbench() {
             )}
             {frame.dots.length > 0 && (
               <div className="dots-table">
-                <div className="dots-header grid grid-cols-[60px_60px_1fr_60px_90px_50px_40px] gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                <div className="dots-header grid grid-cols-[60px_60px_1fr_60px_90px_50px_50px_40px] gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                   <span>String</span>
                   <span>Fret</span>
                   <span>Label</span>
                   <span>Color</span>
                   <span>Shape</span>
                   <span>Root</span>
+                  <span>Hi</span>
                   <span></span>
                 </div>
                 {frame.dots.map((d, i) => {
@@ -447,7 +469,7 @@ export function ScaleWorkbench() {
                   return (
                     <div
                       key={i}
-                      className="dot-row grid grid-cols-[60px_60px_1fr_60px_90px_50px_40px] gap-2 items-center mb-1"
+                      className="dot-row grid grid-cols-[60px_60px_1fr_60px_90px_50px_50px_40px] gap-2 items-center mb-1"
                     >
                       <Input
                         type="number"
@@ -479,7 +501,11 @@ export function ScaleWorkbench() {
                         className="h-9 p-1"
                         value={
                           d.color ??
-                          (d.isRoot ? frame.rootColor : frame.noteColor)
+                          (d.isHighlight
+                            ? frame.highlightColor
+                            : d.isRoot
+                            ? frame.rootColor
+                            : frame.noteColor)
                         }
                         onChange={(e) => updateDot(i, { color: e.target.value })}
                       />
@@ -500,6 +526,12 @@ export function ScaleWorkbench() {
                         className="root-checkbox justify-self-center"
                         checked={Boolean(d.isRoot)}
                         onChange={(e) => updateDot(i, { isRoot: e.target.checked })}
+                      />
+                      <input
+                        type="checkbox"
+                        className="highlight-checkbox justify-self-center"
+                        checked={Boolean(d.isHighlight)}
+                        onChange={(e) => updateDot(i, { isHighlight: e.target.checked })}
                       />
                       <Button
                         size="sm"

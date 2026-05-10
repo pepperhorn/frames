@@ -11,6 +11,7 @@ export interface ScaleDot {
   color?: string;
   shape?: DotShape;
   isRoot?: boolean;
+  isHighlight?: boolean;
 }
 
 export interface ScaleFrame {
@@ -20,6 +21,7 @@ export interface ScaleFrame {
   labelMode: LabelMode;
   rootColor: string;
   noteColor: string;
+  highlightColor: string;
   dots: ScaleDot[];
 }
 
@@ -235,6 +237,7 @@ export function makeBlankScaleFrame(instrumentId: InstrumentId): ScaleFrame {
     labelMode: "note",
     rootColor: "#dc2626",
     noteColor: "#0a0a0a",
+    highlightColor: "#f59e0b",
     dots: [],
   };
 }

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import type { Chord, ChordSettings, Barre, Finger } from "svguitar";
+import type { Chord, ChordSettings, Barre, Finger, FingerOptions } from "svguitar";
 import { ChordChart } from "./ChordChart";
 import type { TextStyle } from "./FretboardChart";
 import { TextStyleControls } from "./TextStyleControls";
@@ -124,6 +124,34 @@ export function ChordWorkbench() {
     strokeWidth: 2,
     style: "normal" as ChordSettings["style"],
   }));
+  const [highlightColor, setHighlightColor] = useState<string>("#f59e0b");
+  const [highlightedStrings, setHighlightedStrings] = useState<Set<number>>(() => new Set());
+
+  const toggleHighlight = (stringNum: number, on: boolean) => {
+    setHighlightedStrings((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(stringNum);
+      else next.delete(stringNum);
+      return next;
+    });
+  };
+
+  const renderedChord = useMemo<Chord>(() => {
+    if (highlightedStrings.size === 0) return chord;
+    const fingers: Finger[] = chord.fingers.map((f) => {
+      const [s, fret, extra] = f;
+      if (!highlightedStrings.has(s)) return f;
+      if (fret === "x" || fret === 0) return f;
+      const base: FingerOptions =
+        extra && typeof extra === "object" ? { ...(extra as FingerOptions) } : {};
+      if (extra && typeof extra === "string") base.text = extra;
+      base.color = highlightColor;
+      base.textColor = base.textColor ?? "#ffffff";
+      return [s, fret, base];
+    });
+    return { ...chord, fingers };
+  }, [chord, highlightedStrings, highlightColor]);
+
   const [textStyle, setTextStyle] = useState<TextStyle>({
     dot: { fontWeight: "600", fontStyle: "normal", shadow: null },
     title: { fontWeight: "700", fontStyle: "normal" },
@@ -320,11 +348,12 @@ export function ChordWorkbench() {
             </div>
 
             <div className="strings-table">
-              <div className="strings-header grid grid-cols-[60px_1fr_1fr_1fr] gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              <div className="strings-header grid grid-cols-[60px_1fr_1fr_1fr_50px] gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                 <span>String</span>
                 <span>Tuning</span>
                 <span>Fret (x / 0 / N)</span>
                 <span>Finger label</span>
+                <span>Hi</span>
               </div>
               {stringRows.map((stringNum) => {
                 const finger = fingerForString(chord, stringNum);
@@ -336,7 +365,7 @@ export function ChordWorkbench() {
                 return (
                   <div
                     key={stringNum}
-                    className="string-row grid grid-cols-[60px_1fr_1fr_1fr] gap-2 items-center mb-1"
+                    className="string-row grid grid-cols-[60px_1fr_1fr_1fr_50px] gap-2 items-center mb-1"
                   >
                     <span className="string-num text-sm font-mono text-muted-foreground">
                       {stringNum}
@@ -357,6 +386,13 @@ export function ChordWorkbench() {
                       placeholder={fretValRaw === "x" || fretValRaw === 0 ? "—" : "1-4"}
                       disabled={fretValRaw === "x" || fretValRaw === 0}
                       onChange={(e) => updateFingerLabel(stringNum, e.target.value)}
+                    />
+                    <input
+                      type="checkbox"
+                      className="highlight-checkbox justify-self-center"
+                      disabled={fretValRaw === "x" || fretValRaw === 0}
+                      checked={highlightedStrings.has(stringNum)}
+                      onChange={(e) => toggleHighlight(stringNum, e.target.checked)}
                     />
                   </div>
                 );
@@ -522,6 +558,15 @@ export function ChordWorkbench() {
               />
             </Label>
             <Label>
+              <span>Highlight color</span>
+              <Input
+                type="color"
+                className="h-9 p-1"
+                value={highlightColor}
+                onChange={(e) => setHighlightColor(e.target.value)}
+              />
+            </Label>
+            <Label>
               <span>Finger text color</span>
               <Input
                 type="color"
@@ -611,7 +656,7 @@ export function ChordWorkbench() {
           <CardContent>
             <div ref={previewRef} className="preview-svg-wrap">
               <ChordChart
-                chord={chord}
+                chord={renderedChord}
                 settings={settings}
                 textStyle={textStyle}
                 className="preview-chart flex justify-center"
