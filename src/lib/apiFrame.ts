@@ -72,7 +72,7 @@ function isInstrumentId(value: unknown): value is InstrumentId {
 function baseSettings(instrument: InstrumentId): ChordSettings {
   const inst = INSTRUMENTS[instrument];
   return {
-    orientation: "vertical",
+    orientation: "vertical" as ChordSettings["orientation"],
     strings: inst.strings,
     frets: inst.frets,
     tuning: inst.tuning,
@@ -85,7 +85,7 @@ function baseSettings(instrument: InstrumentId): ChordSettings {
     fingerSize: 1,
     titleFontSize: 48,
     strokeWidth: 2,
-    style: "normal",
+    style: "normal" as ChordSettings["style"],
   };
 }
 
@@ -182,7 +182,7 @@ function scaleDotsToChord(
     if (dot.isRoot) {
       const opts: FingerOptions = {
         color: rootColor,
-        shape: "circle",
+        shape: "circle" as FingerOptions["shape"],
         textColor: "#ffffff",
       };
       if (label) opts.text = label;
