@@ -37,9 +37,9 @@ future enhancement, not part of v1.
   built to allow it later as an alternate view.
 - Chord-name changes printed above the staff. Vertical headroom is reserved for
   them, but they are not parsed or rendered in v1.
-- Patches for ukulele. v1 maps patches for guitar and bass (see Playback);
-  ukulele falls back to `electric_guitar_jazz`. Tuning drives correct pitch
-  regardless.
+- A separate banjo instrument. v1 has no banjo in the instrument list; the banjo
+  patch is used as the ukulele voice (see Playback). Tuning drives correct pitch
+  for every instrument.
 - Faithful synthesis of techniques (hammer/pull/bend/tap play as plain notes).
 - Auto-bar strictness/validation UI (over/under-full measures are drawn as-is).
 
@@ -189,8 +189,8 @@ Uses Poppins and the existing color handling for visual consistency.
   ×2/3 for triplets, ×1.5 for dotted. Pure math → unit-tested.
 - A thin player wraps `smplr`'s `Soundfont` instrument. The patch is chosen by
   instrument: guitar / guitar-top3 → MusyngKite `electric_guitar_jazz`, bass (4
-  or 5 string) → MusyngKite `electric_bass_finger`, ukulele →
-  `electric_guitar_jazz` (fallback). It starts the AudioContext on the Play
+  or 5 string) → MusyngKite `electric_bass_finger`, ukulele (and any future
+  banjo) → MusyngKite `banjo`. It starts the AudioContext on the Play
   click, schedules each beat's notes (chords fire together, rests advance
   silently), and drives a **cursor highlight** over the current beat via
   `requestAnimationFrame` against elapsed time. Techniques play as plain notes in
@@ -240,6 +240,6 @@ Visual correctness is verified by eye on the dev server.
 
 - Standard-notation alternate view over the same `TabDoc`.
 - Chord-name changes above the staff.
-- A dedicated ukulele patch (uses the guitar patch in v1).
+- A dedicated banjo instrument entry (banjo patch reused for ukulele in v1).
 - Technique-aware synthesis (real hammer/pull/bend/tap), slur arcs.
 - Optional auto-bar validation/warnings for over/under-full measures.
