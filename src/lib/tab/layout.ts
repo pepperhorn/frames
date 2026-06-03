@@ -79,6 +79,13 @@ export interface LayoutOptions {
   feel?: string;
   /** Vertical gap (px) below each header line, including before the staff. */
   headerGap?: number;
+  /** Per-line header font sizes. */
+  titleSize?: number;
+  subtitleSize?: number;
+  feelSize?: number;
+  keySize?: number;
+  /** Show the "Key: X" line (default true). */
+  showKey?: boolean;
 }
 
 /** Build the top-left header (title/subtitle/feel/key) and the top padding it needs. */
@@ -88,12 +95,15 @@ function buildHeader(
 ): { lines: HeaderLine[]; topPad: number } {
   const gap = opts.headerGap ?? 5;
   const specs: Omit<HeaderLine, "y">[] = [];
-  if (opts.title) specs.push({ text: opts.title, size: 18, weight: 700 });
-  if (opts.subtitle) specs.push({ text: opts.subtitle, size: 14, weight: 500 });
-  if (opts.feel) specs.push({ text: opts.feel, size: 12, weight: 500, italic: true });
-  specs.push({ text: `Key: ${keySig}`, size: 12, weight: 600 });
+  if (opts.title) specs.push({ text: opts.title, size: opts.titleSize ?? 18, weight: 700 });
+  if (opts.subtitle) specs.push({ text: opts.subtitle, size: opts.subtitleSize ?? 14, weight: 500 });
+  if (opts.feel)
+    specs.push({ text: opts.feel, size: opts.feelSize ?? 12, weight: 500, italic: true });
+  if (opts.showKey !== false)
+    specs.push({ text: `Key: ${keySig}`, size: opts.keySize ?? 12, weight: 600 });
 
-  const hasBlock = specs.length > 1;
+  // Extra top room only when there's a title block (key alone fits the default pad).
+  const hasBlock = Boolean(opts.title || opts.subtitle || opts.feel);
   const lines: HeaderLine[] = [];
   let bottom = 6; // top margin above the first line
   for (const s of specs) {

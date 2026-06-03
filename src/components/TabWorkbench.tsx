@@ -46,6 +46,11 @@ export function TabWorkbench() {
   const [subtitle, setSubtitle] = useState("");
   const [feel, setFeel] = useState("");
   const [headerGap, setHeaderGap] = useState(5);
+  const [titleSize, setTitleSize] = useState(18);
+  const [subtitleSize, setSubtitleSize] = useState(14);
+  const [feelSize, setFeelSize] = useState(12);
+  const [keySize, setKeySize] = useState(12);
+  const [showKey, setShowKey] = useState(true);
   const [showLookFeel, setShowLookFeel] = useState(false);
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -103,8 +108,16 @@ export function TabWorkbench() {
         subtitle: subtitle.trim() || undefined,
         feel: feel.trim() || undefined,
         headerGap,
+        titleSize,
+        subtitleSize,
+        feelSize,
+        keySize,
+        showKey,
       }),
-    [renderDoc, showStems, showFingerings, previewWidth, barsPerLine, title, subtitle, feel, headerGap],
+    [
+      renderDoc, showStems, showFingerings, previewWidth, barsPerLine,
+      title, subtitle, feel, headerGap, titleSize, subtitleSize, feelSize, keySize, showKey,
+    ],
   );
 
   const playerRef = useRef<TabPlayerHandle | null>(null);
@@ -302,16 +315,42 @@ export function TabWorkbench() {
                   <span>Feel</span>
                   <Input value={feel} onChange={(e) => setFeel(e.target.value)} placeholder="e.g. Swing" />
                 </Label>
+              </div>
+              <div className="lf-size-grid grid grid-cols-2 md:grid-cols-5 gap-3">
                 <Label>
-                  <span>Header line spacing (px)</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={40}
-                    value={headerGap}
-                    onChange={(e) => setHeaderGap(clampSize(e.target.value, 0, 40, 5))}
-                  />
+                  <span>Title size</span>
+                  <Input type="number" min={8} max={48} value={titleSize}
+                    onChange={(e) => setTitleSize(clampSize(e.target.value, 8, 48, 18))} />
                 </Label>
+                <Label>
+                  <span>Subtitle size</span>
+                  <Input type="number" min={8} max={36} value={subtitleSize}
+                    onChange={(e) => setSubtitleSize(clampSize(e.target.value, 8, 36, 14))} />
+                </Label>
+                <Label>
+                  <span>Feel size</span>
+                  <Input type="number" min={8} max={32} value={feelSize}
+                    onChange={(e) => setFeelSize(clampSize(e.target.value, 8, 32, 12))} />
+                </Label>
+                <Label>
+                  <span>Key size</span>
+                  <Input type="number" min={8} max={32} value={keySize}
+                    onChange={(e) => setKeySize(clampSize(e.target.value, 8, 32, 12))} />
+                </Label>
+                <Label>
+                  <span>Line spacing (px)</span>
+                  <Input type="number" min={0} max={40} value={headerGap}
+                    onChange={(e) => setHeaderGap(clampSize(e.target.value, 0, 40, 5))} />
+                </Label>
+              </div>
+              <div className="lf-key-toggle flex flex-wrap gap-2 items-center pt-2 border-t">
+                <Button
+                  variant={showKey ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowKey((v) => !v)}
+                >
+                  Show key: {showKey ? "on" : "off"}
+                </Button>
               </div>
             </CardContent>
           )}
