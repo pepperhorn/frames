@@ -108,9 +108,9 @@ export interface LayoutOptions {
   capo?: number;
 }
 
-/** Reserved height for a mini chord frame at the given cell size. */
+/** Reserved height for a mini chord frame: marker band (cell+3) + 4 fret rows + pad. */
 export function chordFrameHeight(cell: number): number {
-  return cell * 4 + 16;
+  return cell + 3 + cell * 4 + 6;
 }
 
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];

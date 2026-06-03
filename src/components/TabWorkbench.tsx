@@ -9,6 +9,7 @@ import { Select } from "./ui/select";
 import { parseTab } from "@/lib/tab/parse";
 import { layoutTab } from "@/lib/tab/layout";
 import { createTabPlayer, type TabPlayerHandle } from "@/lib/tab/playback";
+import { lookupChordFrets } from "@/lib/tab/chordLookup";
 import { TAB_INSTRUMENTS } from "@/lib/tab/instruments";
 import type { TabDoc, TabInstrument } from "@/lib/tab/types";
 import { FONT_OPTIONS } from "@/lib/fontOptions";
@@ -16,6 +17,7 @@ import {
   downloadPngFromContainer,
   downloadSvgFromContainer,
   safeFilename,
+  triggerDownload,
 } from "@/lib/scaleExport";
 import { downloadPdfFromContainer } from "@/lib/tab/tabExport";
 
@@ -58,7 +60,11 @@ export function TabWorkbench() {
   const [chordFontFamily, setChordFontFamily] = useState("Poppins, sans-serif");
   const [chordFontSize, setChordFontSize] = useState(13);
   const [frameSize, setFrameSize] = useState<FrameSize>("md");
+  const [showFrames, setShowFrames] = useState(true);
   const [showLookFeel, setShowLookFeel] = useState(false);
+  const [showTabJson, setShowTabJson] = useState(false);
+  const [jsonCopied, setJsonCopied] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const frameCell = FRAME_CELL[frameSize];
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -102,13 +108,34 @@ export function TabWorkbench() {
     return () => ro.disconnect();
   }, []);
 
+  // Resolve chord frames: off -> text only; on -> keep explicit codes and look up
+  // a best-voicing frame for label-only chords (from the chord-db presets).
+  const framedDoc = useMemo(() => {
+    const mapBeat = (b: TabDoc["measures"][number]["beats"][number]) => {
+      const c = b.chord;
+      if (!c) return b;
+      if (!showFrames) {
+        return c.label ? { ...b, chord: { label: c.label } } : { ...b, chord: undefined };
+      }
+      if (c.label && !c.frame) {
+        const frets = lookupChordFrets(c.label, instrument);
+        if (frets) return { ...b, chord: { ...c, frame: { frets } } };
+      }
+      return b;
+    };
+    return {
+      ...renderDoc,
+      measures: renderDoc.measures.map((m) => ({ ...m, beats: m.beats.map(mapBeat) })),
+    };
+  }, [renderDoc, showFrames, instrument]);
+
   const layout = useMemo(
     () =>
-      layoutTab(renderDoc, {
+      layoutTab(framedDoc, {
         width: previewWidth,
-        tuning: renderDoc.tuning,
-        stringCount: renderDoc.stringCount,
-        timeSig: renderDoc.timeSig,
+        tuning: framedDoc.tuning,
+        stringCount: framedDoc.stringCount,
+        timeSig: framedDoc.timeSig,
         showStems,
         showFingerings,
         barsPerLine,
@@ -126,7 +153,7 @@ export function TabWorkbench() {
         capo,
       }),
     [
-      renderDoc, showStems, showFingerings, previewWidth, barsPerLine,
+      framedDoc, showStems, showFingerings, previewWidth, barsPerLine,
       title, subtitle, feel, headerGap, titleSize, subtitleSize, feelSize, keySize, showKey,
       chordFontSize, frameCell, capo,
     ],
@@ -172,7 +199,76 @@ export function TabWorkbench() {
   const downloadSvg = () => downloadSvgFromContainer(previewRef.current, filename("svg"));
   const downloadPng = () =>
     downloadPngFromContainer(previewRef.current, filename("png"), { backgroundColor: "#ffffff" });
-  const downloadPdf = () => downloadPdfFromContainer(previewRef.current, filename("pdf"));
+  const downloadPdf = async () => {
+    setExportError(null);
+    try {
+      await downloadPdfFromContainer(previewRef.current, filename("pdf"));
+    } catch (e) {
+      // Surface failures instead of dying as a silent unhandled rejection.
+      setExportError(e instanceof Error ? e.message : "PDF export failed");
+    }
+  };
+
+  // Structured JSON of the current tab: parsed content + playback/layout meta +
+  // the full style settings (kept even if some are reworked later).
+  const tabJson = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          instrument: doc.instrument,
+          tuning: doc.tuning,
+          stringCount: doc.stringCount,
+          keySig: doc.keySig,
+          timeSig: doc.timeSig,
+          bpm,
+          capo,
+          barsPerLine,
+          style: {
+            showStems,
+            showFingerings,
+            showFrames,
+            frameSize,
+            fontFamily,
+            fretFontSize,
+            fingerFontSize,
+            chordFontFamily,
+            chordFontSize,
+            title,
+            subtitle,
+            feel,
+            showKey,
+            headerGap,
+            titleSize,
+            subtitleSize,
+            feelSize,
+            keySize,
+          },
+          measures: doc.measures,
+        },
+        null,
+        2,
+      ),
+    [
+      doc, bpm, capo, barsPerLine, showStems, showFingerings, showFrames, frameSize,
+      fontFamily, fretFontSize, fingerFontSize, chordFontFamily, chordFontSize,
+      title, subtitle, feel, showKey, headerGap, titleSize, subtitleSize, feelSize, keySize,
+    ],
+  );
+  const copyTabJson = async () => {
+    try {
+      await navigator.clipboard.writeText(tabJson);
+      setJsonCopied(true);
+      setTimeout(() => setJsonCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  const saveTabJson = () => {
+    const blob = new Blob([tabJson], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, filename("json"));
+    URL.revokeObjectURL(url);
+  };
 
   const clampSize = (v: string, lo: number, hi: number, fallback: number) =>
     Math.min(hi, Math.max(lo, Number(v) || fallback));
@@ -391,6 +487,14 @@ export function TabWorkbench() {
                 >
                   Show key: {showKey ? "on" : "off"}
                 </Button>
+                <Button
+                  className="frames-toggle"
+                  variant={showFrames ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowFrames((v) => !v)}
+                >
+                  Frames: {showFrames ? "on" : "off"}
+                </Button>
                 <div className="frame-size-radio flex items-center gap-2">
                   <span className="text-sm font-medium">Frame size</span>
                   {FRAME_SIZES.map((s) => (
@@ -398,6 +502,7 @@ export function TabWorkbench() {
                       key={s}
                       variant={frameSize === s ? "default" : "outline"}
                       size="sm"
+                      disabled={!showFrames}
                       onClick={() => setFrameSize(s)}
                     >
                       {s}
@@ -410,7 +515,7 @@ export function TabWorkbench() {
         </Card>
 
         <Card className="preview-card">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-lg">Preview</CardTitle>
             <div className="preview-actions flex gap-2">
               {playing ? (
@@ -432,6 +537,9 @@ export function TabWorkbench() {
                 PDF
               </Button>
             </div>
+            {exportError && (
+              <div className="export-error w-full text-xs text-red-600">{exportError}</div>
+            )}
           </CardHeader>
           <CardContent>
             <div ref={measureRef} className="preview-measure w-full">
@@ -478,6 +586,37 @@ export function TabWorkbench() {
               </div>
             )}
           </CardContent>
+        </Card>
+
+        <Card className="tab-json-card">
+          <div className="tab-json-head flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="tab-json-toggle flex-1 text-left"
+              onClick={() => setShowTabJson((v) => !v)}
+              aria-expanded={showTabJson}
+            >
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm">Tab JSON</CardTitle>
+                <span className="text-muted-foreground text-sm">{showTabJson ? "▲" : "▼"}</span>
+              </CardHeader>
+            </button>
+            <div className="tab-json-actions flex gap-2 pr-6">
+              <Button size="sm" variant="outline" className="copy-json-btn" onClick={copyTabJson}>
+                {jsonCopied ? "Copied!" : "⧉ Copy"}
+              </Button>
+              <Button size="sm" variant="outline" className="save-json-btn" onClick={saveTabJson}>
+                Save .json
+              </Button>
+            </div>
+          </div>
+          {showTabJson && (
+            <CardContent>
+              <pre className="tab-json text-xs overflow-x-auto bg-muted/40 rounded p-3">
+                {tabJson}
+              </pre>
+            </CardContent>
+          )}
         </Card>
     </div>
   );
