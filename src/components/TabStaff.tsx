@@ -257,7 +257,15 @@ function drawChordRow(
     if (!chord) continue;
     if (chord.frame) {
       out.push(
-        ...drawChordFrame(chord.frame.frets, beat.x, frameTop, layout.stringCount, color, frameCell),
+        ...drawChordFrame(
+          chord.frame.frets,
+          beat.x,
+          frameTop,
+          layout.stringCount,
+          color,
+          frameCell,
+          `${beat.globalBeatIndex}`,
+        ),
       );
     }
     if (chord.label) {
@@ -289,6 +297,7 @@ function drawChordFrame(
   stringCount: number,
   color: string,
   cell: number,
+  kp: string,
 ) {
   const gridW = (stringCount - 1) * cell;
   const left = cx - gridW / 2;
@@ -305,7 +314,7 @@ function drawChordFrame(
   for (let i = 0; i < stringCount; i++) {
     const x = left + i * cell;
     out.push(
-      <line key={`cs-${i}`} x1={x} y1={nutY} x2={x} y2={gridBottom} stroke={color} strokeWidth={0.8} />,
+      <line key={`${kp}-cs-${i}`} x1={x} y1={nutY} x2={x} y2={gridBottom} stroke={color} strokeWidth={0.8} />,
     );
   }
   // fret (horizontal) lines; the nut is heavier when the frame starts at fret 1
@@ -313,7 +322,7 @@ function drawChordFrame(
     const y = nutY + r * cell;
     out.push(
       <line
-        key={`cf-${r}`}
+        key={`${kp}-cf-${r}`}
         x1={left}
         y1={y}
         x2={left + gridW}
@@ -325,7 +334,7 @@ function drawChordFrame(
   }
   if (baseFret > 1) {
     out.push(
-      <text key="cbf" x={left - 4} y={nutY + cell * 0.7} fontSize={7} fill={color} textAnchor="end" dominantBaseline="central">
+      <text key={`${kp}-cbf`} x={left - 4} y={nutY + cell * 0.7} fontSize={7} fill={color} textAnchor="end" dominantBaseline="central">
         {baseFret}
       </text>,
     );
@@ -343,7 +352,7 @@ function drawChordFrame(
     const y = nutY + (minFret - baseFret + 0.5) * cell;
     out.push(
       <rect
-        key={`cbar-${minFret}`}
+        key={`${kp}-cbar-${minFret}`}
         x={left + lo * cell - r}
         y={y - r}
         width={(hi - lo) * cell + 2 * r}
@@ -359,17 +368,17 @@ function drawChordFrame(
     const x = left + i * cell;
     if (f === -1) {
       out.push(
-        <text key={`cm-${i}`} x={x} y={markerY} fontSize={7} fill={color} textAnchor="middle" dominantBaseline="central">
+        <text key={`${kp}-cm-${i}`} x={x} y={markerY} fontSize={7} fill={color} textAnchor="middle" dominantBaseline="central">
           ×
         </text>,
       );
     } else if (f === 0) {
       out.push(
-        <circle key={`co-${i}`} cx={x} cy={markerY} r={2.2} fill="none" stroke={color} strokeWidth={0.8} />,
+        <circle key={`${kp}-co-${i}`} cx={x} cy={markerY} r={2.2} fill="none" stroke={color} strokeWidth={0.8} />,
       );
     } else if (!barred.has(i)) {
       out.push(
-        <circle key={`cd-${i}`} cx={x} cy={nutY + (f - baseFret + 0.5) * cell} r={r} fill={color} />,
+        <circle key={`${kp}-cd-${i}`} cx={x} cy={nutY + (f - baseFret + 0.5) * cell} r={r} fill={color} />,
       );
     }
   });

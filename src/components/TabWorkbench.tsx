@@ -9,6 +9,7 @@ import { Select } from "./ui/select";
 import { parseTab } from "@/lib/tab/parse";
 import { layoutTab } from "@/lib/tab/layout";
 import { createTabPlayer, type TabPlayerHandle } from "@/lib/tab/playback";
+import { lookupChordFrets } from "@/lib/tab/chordLookup";
 import { TAB_INSTRUMENTS } from "@/lib/tab/instruments";
 import type { TabDoc, TabInstrument } from "@/lib/tab/types";
 import { FONT_OPTIONS } from "@/lib/fontOptions";
@@ -58,6 +59,7 @@ export function TabWorkbench() {
   const [chordFontFamily, setChordFontFamily] = useState("Poppins, sans-serif");
   const [chordFontSize, setChordFontSize] = useState(13);
   const [frameSize, setFrameSize] = useState<FrameSize>("md");
+  const [showFrames, setShowFrames] = useState(true);
   const [showLookFeel, setShowLookFeel] = useState(false);
   const frameCell = FRAME_CELL[frameSize];
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
@@ -102,13 +104,34 @@ export function TabWorkbench() {
     return () => ro.disconnect();
   }, []);
 
+  // Resolve chord frames: off -> text only; on -> keep explicit codes and look up
+  // a best-voicing frame for label-only chords (from the chord-db presets).
+  const framedDoc = useMemo(() => {
+    const mapBeat = (b: TabDoc["measures"][number]["beats"][number]) => {
+      const c = b.chord;
+      if (!c) return b;
+      if (!showFrames) {
+        return c.label ? { ...b, chord: { label: c.label } } : { ...b, chord: undefined };
+      }
+      if (c.label && !c.frame) {
+        const frets = lookupChordFrets(c.label, instrument);
+        if (frets) return { ...b, chord: { ...c, frame: { frets } } };
+      }
+      return b;
+    };
+    return {
+      ...renderDoc,
+      measures: renderDoc.measures.map((m) => ({ ...m, beats: m.beats.map(mapBeat) })),
+    };
+  }, [renderDoc, showFrames, instrument]);
+
   const layout = useMemo(
     () =>
-      layoutTab(renderDoc, {
+      layoutTab(framedDoc, {
         width: previewWidth,
-        tuning: renderDoc.tuning,
-        stringCount: renderDoc.stringCount,
-        timeSig: renderDoc.timeSig,
+        tuning: framedDoc.tuning,
+        stringCount: framedDoc.stringCount,
+        timeSig: framedDoc.timeSig,
         showStems,
         showFingerings,
         barsPerLine,
@@ -126,7 +149,7 @@ export function TabWorkbench() {
         capo,
       }),
     [
-      renderDoc, showStems, showFingerings, previewWidth, barsPerLine,
+      framedDoc, showStems, showFingerings, previewWidth, barsPerLine,
       title, subtitle, feel, headerGap, titleSize, subtitleSize, feelSize, keySize, showKey,
       chordFontSize, frameCell, capo,
     ],
@@ -391,6 +414,14 @@ export function TabWorkbench() {
                 >
                   Show key: {showKey ? "on" : "off"}
                 </Button>
+                <Button
+                  className="frames-toggle"
+                  variant={showFrames ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowFrames((v) => !v)}
+                >
+                  Frames: {showFrames ? "on" : "off"}
+                </Button>
                 <div className="frame-size-radio flex items-center gap-2">
                   <span className="text-sm font-medium">Frame size</span>
                   {FRAME_SIZES.map((s) => (
@@ -398,6 +429,7 @@ export function TabWorkbench() {
                       key={s}
                       variant={frameSize === s ? "default" : "outline"}
                       size="sm"
+                      disabled={!showFrames}
                       onClick={() => setFrameSize(s)}
                     >
                       {s}
