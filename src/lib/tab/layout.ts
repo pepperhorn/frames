@@ -77,6 +77,8 @@ export interface LayoutOptions {
   title?: string;
   subtitle?: string;
   feel?: string;
+  /** Vertical gap (px) below each header line, including before the staff. */
+  headerGap?: number;
 }
 
 /** Build the top-left header (title/subtitle/feel/key) and the top padding it needs. */
@@ -84,23 +86,22 @@ function buildHeader(
   opts: LayoutOptions,
   keySig: string,
 ): { lines: HeaderLine[]; topPad: number } {
+  const gap = opts.headerGap ?? 5;
+  const specs: Omit<HeaderLine, "y">[] = [];
+  if (opts.title) specs.push({ text: opts.title, size: 18, weight: 700 });
+  if (opts.subtitle) specs.push({ text: opts.subtitle, size: 14, weight: 500 });
+  if (opts.feel) specs.push({ text: opts.feel, size: 12, weight: 500, italic: true });
+  specs.push({ text: `Key: ${keySig}`, size: 12, weight: 600 });
+
+  const hasBlock = specs.length > 1;
   const lines: HeaderLine[] = [];
-  const hasBlock = Boolean(opts.title || opts.subtitle || opts.feel);
-  let y = hasBlock ? 14 : 10;
-  if (opts.title) {
-    lines.push({ text: opts.title, y, size: 18, weight: 700 });
-    y += 24;
+  let bottom = 6; // top margin above the first line
+  for (const s of specs) {
+    const y = bottom + s.size / 2; // dominant-baseline central
+    lines.push({ ...s, y });
+    bottom = y + s.size / 2 + gap; // line box bottom + margin-bottom
   }
-  if (opts.subtitle) {
-    lines.push({ text: opts.subtitle, y, size: 14, weight: 500 });
-    y += 19;
-  }
-  if (opts.feel) {
-    lines.push({ text: opts.feel, y, size: 12, weight: 500, italic: true });
-    y += 17;
-  }
-  lines.push({ text: `Key: ${keySig}`, y, size: 12, weight: 600 });
-  const topPad = hasBlock ? y + 12 : LAYOUT.TOP_PAD;
+  const topPad = hasBlock ? bottom + 6 : LAYOUT.TOP_PAD;
   return { lines, topPad };
 }
 

@@ -45,6 +45,7 @@ export function TabWorkbench() {
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [feel, setFeel] = useState("");
+  const [headerGap, setHeaderGap] = useState(5);
   const [showLookFeel, setShowLookFeel] = useState(false);
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -101,8 +102,9 @@ export function TabWorkbench() {
         title: title.trim() || undefined,
         subtitle: subtitle.trim() || undefined,
         feel: feel.trim() || undefined,
+        headerGap,
       }),
-    [renderDoc, showStems, showFingerings, previewWidth, barsPerLine, title, subtitle, feel],
+    [renderDoc, showStems, showFingerings, previewWidth, barsPerLine, title, subtitle, feel, headerGap],
   );
 
   const playerRef = useRef<TabPlayerHandle | null>(null);
@@ -299,6 +301,16 @@ export function TabWorkbench() {
                 <Label>
                   <span>Feel</span>
                   <Input value={feel} onChange={(e) => setFeel(e.target.value)} placeholder="e.g. Swing" />
+                </Label>
+                <Label>
+                  <span>Header line spacing (px)</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={40}
+                    value={headerGap}
+                    onChange={(e) => setHeaderGap(clampSize(e.target.value, 0, 40, 5))}
+                  />
                 </Label>
               </div>
             </CardContent>
