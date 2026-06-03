@@ -144,8 +144,45 @@ function SystemView({
 
       {/* Triplet brackets with a "3" */}
       {layout.showStems && drawTriplets(sys, beamY, color, fontFamily)}
+
+      {/* Fretting-hand fingering row beneath the staff */}
+      {layout.showFingerings && drawFingerings(sys, beamY, color, fontFamily)}
     </g>
   );
+}
+
+function drawFingerings(
+  sys: TabSystem,
+  beamY: number,
+  color: string,
+  fontFamily: string,
+) {
+  const out: ReactElement[] = [];
+  const rowY = beamY + 22; // clears stems, beams, triplet brackets and technique labels
+  for (const beat of sys.beats) {
+    if (beat.isRest) continue;
+    const fingered = beat.notes.filter((n) => n.finger);
+    if (fingered.length === 0) continue;
+    // Stack a chord's fingers top-to-bottom by string (string 1 = top line).
+    const ordered = [...fingered].sort((a, b) => a.string - b.string);
+    ordered.forEach((n, i) => {
+      out.push(
+        <text
+          key={`fin-${beat.globalBeatIndex}-${i}`}
+          x={beat.x}
+          y={rowY + i * 11}
+          fontSize={10}
+          fontFamily={fontFamily}
+          fill={color}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          {n.finger}
+        </text>,
+      );
+    });
+  }
+  return out;
 }
 
 function drawTriplets(sys: TabSystem, beamY: number, color: string, fontFamily: string) {
@@ -295,19 +332,6 @@ function BeatView({
               >
                 {n.fret}
               </text>
-              {layout.showFingerings && n.finger && (
-                <text
-                  x={beat.x + 9}
-                  y={y - 7}
-                  fontSize={9}
-                  fontFamily={fontFamily}
-                  fill={color}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                >
-                  {n.finger}
-                </text>
-              )}
             </g>
           );
         })

@@ -12,7 +12,7 @@ export const LAYOUT = {
   MEASURE_PAD: 16,
   BEAT_MIN_W: 28,
   BEAT_SCALE: 150,
-  BOTTOM_PAD: 40,
+  BOTTOM_PAD: 56,
 } as const;
 
 export interface PlacedBeat {
