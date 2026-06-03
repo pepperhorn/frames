@@ -200,7 +200,8 @@ export function TabWorkbench() {
     downloadPngFromContainer(previewRef.current, filename("png"), { backgroundColor: "#ffffff" });
   const downloadPdf = () => downloadPdfFromContainer(previewRef.current, filename("pdf"));
 
-  // Structured JSON of the current tab (the parsed content + playback/layout meta).
+  // Structured JSON of the current tab: parsed content + playback/layout meta +
+  // the full style settings (kept even if some are reworked later).
   const tabJson = useMemo(
     () =>
       JSON.stringify(
@@ -213,12 +214,36 @@ export function TabWorkbench() {
           bpm,
           capo,
           barsPerLine,
+          style: {
+            showStems,
+            showFingerings,
+            showFrames,
+            frameSize,
+            fontFamily,
+            fretFontSize,
+            fingerFontSize,
+            chordFontFamily,
+            chordFontSize,
+            title,
+            subtitle,
+            feel,
+            showKey,
+            headerGap,
+            titleSize,
+            subtitleSize,
+            feelSize,
+            keySize,
+          },
           measures: doc.measures,
         },
         null,
         2,
       ),
-    [doc, bpm, capo, barsPerLine],
+    [
+      doc, bpm, capo, barsPerLine, showStems, showFingerings, showFrames, frameSize,
+      fontFamily, fretFontSize, fingerFontSize, chordFontFamily, chordFontSize,
+      title, subtitle, feel, showKey, headerGap, titleSize, subtitleSize, feelSize, keySize,
+    ],
   );
   const copyTabJson = async () => {
     try {
