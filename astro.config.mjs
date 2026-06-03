@@ -10,5 +10,8 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    ssr: {
+      external: ['svguitar', '@svgdotjs/svg.js', 'sharp', 'svgdom'],
+    },
   },
 });

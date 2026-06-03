@@ -27,6 +27,14 @@ export const prerender = true;
     <div id="host"></div>
     <script>
       import { renderFrameInto } from "@/lib/render/renderIntoElement";
+      import type { FrameSpec } from "@/lib/render/types";
+
+      declare global {
+        interface Window {
+          renderFrame?: (spec: FrameSpec) => Promise<string | null>;
+          __rendererReady?: boolean;
+        }
+      }
 
       // Wait for fonts to load before declaring ready so the first render
       // gets correct metrics.
@@ -34,9 +42,10 @@ export const prerender = true;
         try { await document.fonts.ready; } catch {}
       })();
 
-      window.renderFrame = async (spec) => {
+      window.renderFrame = async (spec: FrameSpec) => {
         await ready;
         const host = document.getElementById("host");
+        if (!host) return null;
         const svg = renderFrameInto(host, spec);
         return svg ? svg.outerHTML : null;
       };
