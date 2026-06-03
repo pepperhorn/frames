@@ -11,11 +11,13 @@ import { layoutTab } from "@/lib/tab/layout";
 import { createTabPlayer, type TabPlayerHandle } from "@/lib/tab/playback";
 import { TAB_INSTRUMENTS } from "@/lib/tab/instruments";
 import type { TabDoc, TabInstrument } from "@/lib/tab/types";
+import { FONT_OPTIONS } from "@/lib/fontOptions";
 import {
   downloadPngFromContainer,
   downloadSvgFromContainer,
   safeFilename,
 } from "@/lib/scaleExport";
+import { downloadPdfFromContainer } from "@/lib/tab/tabExport";
 
 type InstrumentUi = "guitar" | "bass" | "ukulele";
 
@@ -37,6 +39,13 @@ export function TabWorkbench() {
   const [barsPerLine, setBarsPerLine] = useState(4);
   const [showStems, setShowStems] = useState(true);
   const [showFingerings, setShowFingerings] = useState(false);
+  const [fontFamily, setFontFamily] = useState("Poppins, sans-serif");
+  const [fretFontSize, setFretFontSize] = useState(13);
+  const [fingerFontSize, setFingerFontSize] = useState(10);
+  const [title, setTitle] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [feel, setFeel] = useState("");
+  const [showLookFeel, setShowLookFeel] = useState(false);
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -89,8 +98,11 @@ export function TabWorkbench() {
         showStems,
         showFingerings,
         barsPerLine,
+        title: title.trim() || undefined,
+        subtitle: subtitle.trim() || undefined,
+        feel: feel.trim() || undefined,
       }),
-    [renderDoc, showStems, showFingerings, previewWidth, barsPerLine],
+    [renderDoc, showStems, showFingerings, previewWidth, barsPerLine, title, subtitle, feel],
   );
 
   const playerRef = useRef<TabPlayerHandle | null>(null);
@@ -128,10 +140,15 @@ export function TabWorkbench() {
     };
   }, []);
 
-  const filename = (ext: string) => safeFilename(["tab", TAB_INSTRUMENTS[instrument].label], ext);
+  const filename = (ext: string) =>
+    safeFilename([title.trim() || "tab", TAB_INSTRUMENTS[instrument].label], ext);
   const downloadSvg = () => downloadSvgFromContainer(previewRef.current, filename("svg"));
   const downloadPng = () =>
     downloadPngFromContainer(previewRef.current, filename("png"), { backgroundColor: "#ffffff" });
+  const downloadPdf = () => downloadPdfFromContainer(previewRef.current, filename("pdf"));
+
+  const clampSize = (v: string, lo: number, hi: number, fallback: number) =>
+    Math.min(hi, Math.max(lo, Number(v) || fallback));
 
   return (
     <div className="tab-workbench flex flex-col gap-6">
@@ -226,6 +243,68 @@ export function TabWorkbench() {
           </CardContent>
         </Card>
 
+        <Card className="look-feel-card">
+          <button
+            type="button"
+            className="look-feel-toggle w-full"
+            onClick={() => setShowLookFeel((v) => !v)}
+            aria-expanded={showLookFeel}
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-lg">Look &amp; Feel</CardTitle>
+              <span className="text-muted-foreground text-sm">{showLookFeel ? "▲" : "▼"}</span>
+            </CardHeader>
+          </button>
+          {showLookFeel && (
+            <CardContent className="flex flex-col gap-4">
+              <div className="lf-grid grid grid-cols-2 md:grid-cols-3 gap-3">
+                <Label className="col-span-2 md:col-span-1">
+                  <span>Font</span>
+                  <Select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}>
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f.value} value={f.value}>{f.label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label>
+                  <span>Fret number size</span>
+                  <Input
+                    type="number"
+                    min={8}
+                    max={28}
+                    value={fretFontSize}
+                    onChange={(e) => setFretFontSize(clampSize(e.target.value, 8, 28, 13))}
+                  />
+                </Label>
+                <Label>
+                  <span>Fingering size</span>
+                  <Input
+                    type="number"
+                    min={7}
+                    max={24}
+                    value={fingerFontSize}
+                    onChange={(e) => setFingerFontSize(clampSize(e.target.value, 7, 24, 10))}
+                  />
+                </Label>
+              </div>
+              <div className="lf-text-grid grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Label>
+                  <span>Title</span>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="optional" />
+                </Label>
+                <Label>
+                  <span>Subtitle</span>
+                  <Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="optional" />
+                </Label>
+                <Label>
+                  <span>Feel</span>
+                  <Input value={feel} onChange={(e) => setFeel(e.target.value)} placeholder="e.g. Swing" />
+                </Label>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
         <Card className="preview-card">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-lg">Preview</CardTitle>
@@ -245,12 +324,21 @@ export function TabWorkbench() {
               <Button size="sm" variant="outline" onClick={downloadPng} className="download-png-btn">
                 PNG
               </Button>
+              <Button size="sm" variant="outline" onClick={downloadPdf} className="download-pdf-btn">
+                PDF
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
             <div ref={measureRef} className="preview-measure w-full">
               <div ref={previewRef} className="preview-svg-wrap overflow-x-auto bg-white rounded">
-                <TabStaff layout={layout} cursorIndex={cursorIndex} />
+                <TabStaff
+                  layout={layout}
+                  cursorIndex={cursorIndex}
+                  fontFamily={fontFamily}
+                  fretFontSize={fretFontSize}
+                  fingerFontSize={fingerFontSize}
+                />
               </div>
             </div>
           </CardContent>

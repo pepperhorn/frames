@@ -43,6 +43,14 @@ export interface TabSystem {
   barlines: PlacedBarline[];
 }
 
+export interface HeaderLine {
+  text: string;
+  y: number;
+  size: number;
+  weight: number;
+  italic?: boolean;
+}
+
 export interface TabLayout {
   systems: TabSystem[];
   width: number;
@@ -51,6 +59,7 @@ export interface TabLayout {
   tuning: string[];
   timeSig: TimeSig;
   keySig: string;
+  header: HeaderLine[];
   showStems: boolean;
   showFingerings: boolean;
 }
@@ -64,6 +73,35 @@ export interface LayoutOptions {
   showFingerings: boolean;
   /** Hard cap on measures per system; a line still wraps earlier if too wide. */
   barsPerLine?: number;
+  /** Optional page header, rendered top-left above the key label. */
+  title?: string;
+  subtitle?: string;
+  feel?: string;
+}
+
+/** Build the top-left header (title/subtitle/feel/key) and the top padding it needs. */
+function buildHeader(
+  opts: LayoutOptions,
+  keySig: string,
+): { lines: HeaderLine[]; topPad: number } {
+  const lines: HeaderLine[] = [];
+  const hasBlock = Boolean(opts.title || opts.subtitle || opts.feel);
+  let y = hasBlock ? 14 : 10;
+  if (opts.title) {
+    lines.push({ text: opts.title, y, size: 18, weight: 700 });
+    y += 24;
+  }
+  if (opts.subtitle) {
+    lines.push({ text: opts.subtitle, y, size: 14, weight: 500 });
+    y += 19;
+  }
+  if (opts.feel) {
+    lines.push({ text: opts.feel, y, size: 12, weight: 500, italic: true });
+    y += 17;
+  }
+  lines.push({ text: `Key: ${keySig}`, y, size: 12, weight: 600 });
+  const topPad = hasBlock ? y + 12 : LAYOUT.TOP_PAD;
+  return { lines, topPad };
 }
 
 function flagsFor(duration: Duration): number {
@@ -86,6 +124,7 @@ function measureWidth(measure: Measure): number {
 export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
   const avail = opts.width - LAYOUT.LEFT_PAD - LAYOUT.RIGHT_PAD;
   const staffHeight = (opts.stringCount - 1) * LAYOUT.LINE_GAP;
+  const { lines: header, topPad } = buildHeader(opts, doc.keySig);
 
   // 1. Pack measures into systems. With an explicit bars-per-line, that count is
   //    authoritative (the staff may grow wider than the container and scroll).
@@ -116,7 +155,7 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
   let measureCursor = 0;
 
   rows.forEach((rowMeasures, rowIdx) => {
-    const yTop = LAYOUT.TOP_PAD + rowIdx * (staffHeight + LAYOUT.SYSTEM_GAP);
+    const yTop = topPad + rowIdx * (staffHeight + LAYOUT.SYSTEM_GAP);
     const lineYs = Array.from({ length: opts.stringCount }, (_, i) => yTop + i * LAYOUT.LINE_GAP);
 
     const beats: PlacedBeat[] = [];
@@ -208,6 +247,7 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
     tuning: opts.tuning,
     timeSig: opts.timeSig,
     keySig: doc.keySig,
+    header,
     showStems: opts.showStems,
     showFingerings: opts.showFingerings,
   };

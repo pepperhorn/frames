@@ -8,10 +8,11 @@ interface TabStaffProps {
   fontFamily?: string;
   color?: string;
   backgroundColor?: string;
+  fretFontSize?: number;
+  fingerFontSize?: number;
   className?: string;
 }
 
-const NUMBER_FONT_SIZE = 13;
 const TUNING_FONT_SIZE = 11;
 
 export function TabStaff({
@@ -20,6 +21,8 @@ export function TabStaff({
   fontFamily = "Poppins, sans-serif",
   color = "#0a0a0a",
   backgroundColor = "transparent",
+  fretFontSize = 13,
+  fingerFontSize = 10,
   className,
 }: TabStaffProps) {
   return (
@@ -32,6 +35,26 @@ export function TabStaff({
       style={{ fontFamily }}
     >
       <rect x={0} y={0} width={layout.width} height={layout.height} fill={backgroundColor} />
+
+      {/* Page header (title / subtitle / feel / key), top-left */}
+      {layout.header.map((line, i) => (
+        <text
+          key={`hdr-${i}`}
+          className="tab-header-line"
+          x={4}
+          y={line.y}
+          fontSize={line.size}
+          fontFamily={fontFamily}
+          fontWeight={line.weight}
+          fontStyle={line.italic ? "italic" : "normal"}
+          fill={color}
+          textAnchor="start"
+          dominantBaseline="central"
+        >
+          {line.text}
+        </text>
+      ))}
+
       {layout.systems.map((sys, i) => (
         <SystemView
           key={i}
@@ -42,6 +65,8 @@ export function TabStaff({
           color={color}
           cursorIndex={cursorIndex}
           fontFamily={fontFamily}
+          fretFontSize={fretFontSize}
+          fingerFontSize={fingerFontSize}
         />
       ))}
     </svg>
@@ -56,6 +81,8 @@ function SystemView({
   color,
   cursorIndex,
   fontFamily,
+  fretFontSize,
+  fingerFontSize,
 }: {
   sys: TabSystem;
   layout: TabLayout;
@@ -64,6 +91,8 @@ function SystemView({
   color: string;
   cursorIndex: number | null;
   fontFamily: string;
+  fretFontSize: number;
+  fingerFontSize: number;
 }) {
   const beamY = stemBaseY + LAYOUT.STEM_LEN;
   return (
@@ -112,22 +141,6 @@ function SystemView({
         </g>
       )}
 
-      {/* Key label, top-left of the diagram (first system only) */}
-      {showTimeSig && (
-        <text
-          className="tab-key-label"
-          x={4}
-          y={10}
-          fontSize={12}
-          fontFamily={fontFamily}
-          fontWeight={600}
-          fill={color}
-          textAnchor="start"
-          dominantBaseline="central"
-        >
-          Key: {layout.keySig}
-        </text>
-      )}
 
       {/* Barlines */}
       {sys.barlines.map((bar, i) => (
@@ -152,6 +165,7 @@ function SystemView({
           stemBaseY={stemBaseY}
           color={color}
           fontFamily={fontFamily}
+          fretFontSize={fretFontSize}
           highlighted={cursorIndex === beat.globalBeatIndex}
         />
       ))}
@@ -163,7 +177,7 @@ function SystemView({
       {layout.showStems && drawTriplets(sys, beamY, color, fontFamily)}
 
       {/* Fretting-hand fingering row beneath the staff */}
-      {layout.showFingerings && drawFingerings(sys, beamY, color, fontFamily)}
+      {layout.showFingerings && drawFingerings(sys, beamY, color, fontFamily, fingerFontSize)}
     </g>
   );
 }
@@ -173,9 +187,11 @@ function drawFingerings(
   beamY: number,
   color: string,
   fontFamily: string,
+  fingerFontSize: number,
 ) {
   const out: ReactElement[] = [];
   const rowY = beamY + 22; // clears stems, beams, triplet brackets and technique labels
+  const lineStep = fingerFontSize + 1;
   for (const beat of sys.beats) {
     if (beat.isRest) continue;
     const fingered = beat.notes.filter((n) => n.finger);
@@ -187,8 +203,8 @@ function drawFingerings(
         <text
           key={`fin-${beat.globalBeatIndex}-${i}`}
           x={beat.x}
-          y={rowY + i * 11}
-          fontSize={10}
+          y={rowY + i * lineStep}
+          fontSize={fingerFontSize}
           fontFamily={fontFamily}
           fill={color}
           textAnchor="middle"
@@ -283,6 +299,7 @@ function BeatView({
   stemBaseY,
   color,
   fontFamily,
+  fretFontSize,
   highlighted,
 }: {
   beat: PlacedBeat;
@@ -291,9 +308,13 @@ function BeatView({
   stemBaseY: number;
   color: string;
   fontFamily: string;
+  fretFontSize: number;
   highlighted: boolean;
 }) {
   const beamY = stemBaseY + LAYOUT.STEM_LEN;
+  // Start the stem clear of the fret number on the bottom string (>=2px below it).
+  const stemTopY = Math.min(stemBaseY + fretFontSize / 2 + 4, beamY - 6);
+  const knockoutH = fretFontSize + 3;
   const isFlaggedSingleton =
     layout.showStems && beat.beamGroup !== null && !beat.isRest && isSingleton(sys, beat);
 
@@ -315,7 +336,7 @@ function BeatView({
         <text
           x={beat.x}
           y={sys.lineYs[Math.floor(layout.stringCount / 2)]}
-          fontSize={NUMBER_FONT_SIZE}
+          fontSize={fretFontSize}
           fontFamily={fontFamily}
           fontStyle="italic"
           fill={color}
@@ -327,20 +348,21 @@ function BeatView({
       ) : (
         beat.notes.map((n, i) => {
           const y = sys.lineYs[n.string - 1];
+          const rw = String(n.fret).length * fretFontSize * 0.62 + 4;
           return (
             <g key={i} className="tab-note">
               {/* knock out the staff line behind the number */}
               <rect
-                x={beat.x - 7}
-                y={y - 8}
-                width={14}
-                height={16}
+                x={beat.x - rw / 2}
+                y={y - knockoutH / 2}
+                width={rw}
+                height={knockoutH}
                 fill={layoutBg(layout)}
               />
               <text
                 x={beat.x}
                 y={y}
-                fontSize={NUMBER_FONT_SIZE}
+                fontSize={fretFontSize}
                 fontFamily={fontFamily}
                 fontWeight={600}
                 fill={color}
@@ -354,11 +376,11 @@ function BeatView({
         })
       )}
 
-      {/* Stem */}
+      {/* Stem (starts below the fret number for clarity) */}
       {layout.showStems && !beat.isRest && beat.duration !== "w" && beat.duration !== "wt" && (
         <line
           x1={beat.x}
-          y1={stemBaseY}
+          y1={stemTopY}
           x2={beat.x}
           y2={beamY}
           stroke={color}
@@ -380,9 +402,9 @@ function BeatView({
           />
         ))}
 
-      {/* Dot for dotted durations */}
+      {/* Dot for dotted durations (just right of the stem top, clear of the number) */}
       {layout.showStems && beat.dotted && !beat.isRest && (
-        <circle cx={beat.x + 6} cy={stemBaseY + 3} r={1.6} fill={color} />
+        <circle cx={beat.x + 5} cy={stemTopY + 2} r={1.6} fill={color} />
       )}
 
       {/* Technique label under the stem */}
