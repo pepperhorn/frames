@@ -516,6 +516,8 @@ function BeatView({
         beat.notes.map((n, i) => {
           const y = sys.lineYs[n.string - 1];
           const rw = String(n.fret).length * fretFontSize * 0.62 + 4;
+          const dotR = Math.max(1.5, fretFontSize * 0.13);
+          const dotX = beat.x + rw / 2 + dotR + 1;
           return (
             <g key={i} className="tab-note">
               {/* knock out the staff line behind the number */}
@@ -538,6 +540,19 @@ function BeatView({
               >
                 {n.fret}
               </text>
+              {/* augmentation dot beside the number, with the same line knockout */}
+              {beat.dotted && (
+                <>
+                  <rect
+                    x={dotX - dotR - 1}
+                    y={y - knockoutH / 2}
+                    width={dotR * 2 + 2}
+                    height={knockoutH}
+                    fill={layoutBg(layout)}
+                  />
+                  <circle cx={dotX} cy={y} r={dotR} fill={color} />
+                </>
+              )}
             </g>
           );
         })
@@ -568,11 +583,6 @@ function BeatView({
             strokeWidth={3}
           />
         ))}
-
-      {/* Dot for dotted durations (just right of the stem top, clear of the number) */}
-      {layout.showStems && beat.dotted && !beat.isRest && (
-        <circle cx={beat.x + 5} cy={stemTopY + 2} r={1.6} fill={color} />
-      )}
 
       {/* Technique label under the stem */}
       {beat.technique && (
