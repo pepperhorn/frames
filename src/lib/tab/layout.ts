@@ -72,6 +72,8 @@ export interface TabLayout {
   keySig: string;
   header: HeaderLine[];
   chordRowH: number; // vertical space reserved above each system for chord annotations
+  chordSymbolH: number; // height of the symbol band (top of the chord row)
+  chordFrameH: number; // height of the frame band (below the symbol band)
   showStems: boolean;
   showFingerings: boolean;
 }
@@ -100,8 +102,15 @@ export interface LayoutOptions {
   showKey?: boolean;
   /** Chord-symbol font size, used to reserve the chord row height. */
   chordFontSize?: number;
+  /** Mini chord-frame cell size in px (drives frame width + reserved height). */
+  chordFrameCell?: number;
   /** Capo fret (0 = none); shown as a header line. */
   capo?: number;
+}
+
+/** Reserved height for a mini chord frame at the given cell size. */
+export function chordFrameHeight(cell: number): number {
+  return cell * 4 + 16;
 }
 
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
@@ -165,7 +174,7 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
   const hasChordLabel = allBeats.some((b) => b.chord?.label);
   const hasChordFrame = allBeats.some((b) => b.chord?.frame);
   const chordSymbolH = hasChordLabel ? (opts.chordFontSize ?? 13) + 4 : 0;
-  const chordFrameH = hasChordFrame ? LAYOUT.CHORD_FRAME_H : 0;
+  const chordFrameH = hasChordFrame ? chordFrameHeight(opts.chordFrameCell ?? 8) : 0;
   const chordRowH = chordFrameH + chordSymbolH + (chordFrameH || chordSymbolH ? 6 : 0);
 
   // 1. Pack measures into systems. With an explicit bars-per-line, that count is
@@ -293,6 +302,8 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
     keySig: doc.keySig,
     header,
     chordRowH,
+    chordSymbolH,
+    chordFrameH,
     showStems: opts.showStems,
     showFingerings: opts.showFingerings,
   };
