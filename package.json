@@ -9,22 +9,31 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/node": "^10.1.1",
     "@astrojs/react": "^5.0.4",
+    "@svgdotjs/svg.js": "^3.2.5",
     "@tailwindcss/vite": "^4.2.4",
     "@tombatossals/chords-db": "^0.5.1",
+    "@types/opentype.js": "^1.3.10",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "astro": "^6.1.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jspdf": "^3.0.4",
     "lucide-react": "^1.14.0",
+    "opentype.js": "^2.0.0",
+    "playwright": "^1.60.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "sharp": "^0.34.5",
+    "smplr": "^0.26.0",
+    "svg2pdf.js": "^2.7.0",
+    "svgdom": "^0.1.23",
     "svguitar": "^2.5.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.4",
@@ -32,6 +41,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
   }
 }

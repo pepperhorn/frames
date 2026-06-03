@@ -1,0 +1,290 @@
+// src/lib/tab/layout.ts
+import { beatFraction } from "./durations";
+import type {
+  Beat,
+  ChordAnnotation,
+  Duration,
+  Measure,
+  TabDoc,
+  Technique,
+  TimeSig,
+} from "./types";
+
+export const LAYOUT = {
+  LINE_GAP: 14,
+  LEFT_PAD: 60,
+  RIGHT_PAD: 16,
+  TOP_PAD: 32,
+  STEM_LEN: 20,
+  SYSTEM_GAP: 72,
+  MEASURE_PAD: 16,
+  BEAT_MIN_W: 28,
+  BEAT_SCALE: 150,
+  BOTTOM_PAD: 56,
+  CHORD_CELL: 7, // px per string-gap / fret-row in a mini chord frame
+  CHORD_FRAME_H: 44, // reserved height for a mini frame (incl. open/muted markers)
+} as const;
+
+export interface PlacedBeat {
+  x: number; // center x of the beat slot
+  measureIndex: number;
+  globalBeatIndex: number;
+  notes: { string: number; fret: number; finger?: number }[];
+  duration: Duration;
+  dotted: boolean;
+  technique?: Technique;
+  isRest: boolean;
+  beamGroup: number | null; // shared id for beamed runs; null if not beam-eligible
+  tripletGroup: number | null; // shared id for consecutive triplet beats; null otherwise
+  flags: number; // 0 = quarter or longer, 1 = eighth, 2 = sixteenth
+  chord?: ChordAnnotation; // symbol/frame drawn in the chord row above this beat
+}
+
+export interface PlacedBarline {
+  x: number;
+  final: boolean;
+}
+
+export interface TabSystem {
+  yTop: number;
+  lineYs: number[];
+  lineX0: number;
+  lineX1: number;
+  beats: PlacedBeat[];
+  barlines: PlacedBarline[];
+}
+
+export interface HeaderLine {
+  text: string;
+  y: number;
+  size: number;
+  weight: number;
+  italic?: boolean;
+}
+
+export interface TabLayout {
+  systems: TabSystem[];
+  width: number;
+  height: number;
+  stringCount: number;
+  tuning: string[];
+  timeSig: TimeSig;
+  keySig: string;
+  header: HeaderLine[];
+  chordRowH: number; // vertical space reserved above each system for chord annotations
+  showStems: boolean;
+  showFingerings: boolean;
+}
+
+export interface LayoutOptions {
+  width: number;
+  tuning: string[];
+  stringCount: number;
+  timeSig: TimeSig;
+  showStems: boolean;
+  showFingerings: boolean;
+  /** Hard cap on measures per system; a line still wraps earlier if too wide. */
+  barsPerLine?: number;
+  /** Optional page header, rendered top-left above the key label. */
+  title?: string;
+  subtitle?: string;
+  feel?: string;
+  /** Vertical gap (px) below each header line, including before the staff. */
+  headerGap?: number;
+  /** Per-line header font sizes. */
+  titleSize?: number;
+  subtitleSize?: number;
+  feelSize?: number;
+  keySize?: number;
+  /** Show the "Key: X" line (default true). */
+  showKey?: boolean;
+  /** Chord-symbol font size, used to reserve the chord row height. */
+  chordFontSize?: number;
+}
+
+/** Build the top-left header (title/subtitle/feel/key) and the top padding it needs. */
+function buildHeader(
+  opts: LayoutOptions,
+  keySig: string,
+): { lines: HeaderLine[]; topPad: number } {
+  const gap = opts.headerGap ?? 5;
+  const specs: Omit<HeaderLine, "y">[] = [];
+  if (opts.title) specs.push({ text: opts.title, size: opts.titleSize ?? 18, weight: 700 });
+  if (opts.subtitle) specs.push({ text: opts.subtitle, size: opts.subtitleSize ?? 14, weight: 500 });
+  if (opts.feel)
+    specs.push({ text: opts.feel, size: opts.feelSize ?? 12, weight: 500, italic: true });
+  if (opts.showKey !== false)
+    specs.push({ text: `Key: ${keySig}`, size: opts.keySize ?? 12, weight: 600 });
+
+  // Extra top room only when there's a title block (key alone fits the default pad).
+  const hasBlock = Boolean(opts.title || opts.subtitle || opts.feel);
+  const lines: HeaderLine[] = [];
+  let bottom = 6; // top margin above the first line
+  for (const s of specs) {
+    const y = bottom + s.size / 2; // dominant-baseline central
+    lines.push({ ...s, y });
+    bottom = y + s.size / 2 + gap; // line box bottom + margin-bottom
+  }
+  const topPad = hasBlock ? bottom + 6 : LAYOUT.TOP_PAD;
+  return { lines, topPad };
+}
+
+function flagsFor(duration: Duration): number {
+  const base = duration.endsWith("t") ? duration.slice(0, -1) : duration;
+  if (base === "e") return 1;
+  if (base === "s") return 2;
+  return 0;
+}
+
+function beatWidth(beat: Beat): number {
+  const frac = beatFraction(beat.duration, beat.dotted);
+  return LAYOUT.BEAT_MIN_W + frac * LAYOUT.BEAT_SCALE;
+}
+
+function measureWidth(measure: Measure): number {
+  const beats = measure.beats.reduce((sum, b) => sum + beatWidth(b), 0);
+  return beats + LAYOUT.MEASURE_PAD;
+}
+
+export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
+  const avail = opts.width - LAYOUT.LEFT_PAD - LAYOUT.RIGHT_PAD;
+  const staffHeight = (opts.stringCount - 1) * LAYOUT.LINE_GAP;
+  const { lines: header, topPad } = buildHeader(opts, doc.keySig);
+
+  // Reserve a chord row above each system if any beat carries a chord annotation.
+  const allBeats = doc.measures.flatMap((m) => m.beats);
+  const hasChordLabel = allBeats.some((b) => b.chord?.label);
+  const hasChordFrame = allBeats.some((b) => b.chord?.frame);
+  const chordSymbolH = hasChordLabel ? (opts.chordFontSize ?? 13) + 4 : 0;
+  const chordFrameH = hasChordFrame ? LAYOUT.CHORD_FRAME_H : 0;
+  const chordRowH = chordFrameH + chordSymbolH + (chordFrameH || chordSymbolH ? 6 : 0);
+
+  // 1. Pack measures into systems. With an explicit bars-per-line, that count is
+  //    authoritative (the staff may grow wider than the container and scroll).
+  //    Without one, fall back to wrapping whenever the next measure won't fit.
+  const maxBars = opts.barsPerLine && opts.barsPerLine > 0 ? opts.barsPerLine : Infinity;
+  const rows: Measure[][] = [];
+  let row: Measure[] = [];
+  let rowWidth = 0;
+  for (const measure of doc.measures) {
+    const w = measureWidth(measure);
+    const widthWrap = !isFinite(maxBars) && rowWidth + w > avail;
+    if (row.length > 0 && (row.length >= maxBars || widthWrap)) {
+      rows.push(row);
+      row = [];
+      rowWidth = 0;
+    }
+    row.push(measure);
+    rowWidth += w;
+  }
+  if (row.length > 0) rows.push(row);
+
+  // 2. Place beats/barlines per system; assign global indices + beam groups.
+  const systems: TabSystem[] = [];
+  let globalBeatIndex = 0;
+  let beamGroupSeq = 0;
+  let tripletGroupSeq = 0;
+  const totalMeasures = doc.measures.length;
+  let measureCursor = 0;
+
+  rows.forEach((rowMeasures, rowIdx) => {
+    const yTop =
+      topPad + chordRowH + rowIdx * (staffHeight + chordRowH + LAYOUT.SYSTEM_GAP);
+    const lineYs = Array.from({ length: opts.stringCount }, (_, i) => yTop + i * LAYOUT.LINE_GAP);
+
+    const beats: PlacedBeat[] = [];
+    const barlines: PlacedBarline[] = [];
+    let x = LAYOUT.LEFT_PAD;
+
+    rowMeasures.forEach((measure) => {
+      const localMeasureIndex = measureCursor;
+
+      // Beam grouping within this measure: runs of beam-eligible beats,
+      // broken by a non-eligible beat or a rest.
+      let activeGroup: number | null = null;
+      const groupForBeat: (number | null)[] = [];
+      measure.beats.forEach((b) => {
+        const eligible = !b.isRest && flagsFor(b.duration) > 0;
+        if (!eligible) {
+          activeGroup = null;
+          groupForBeat.push(null);
+          return;
+        }
+        if (activeGroup === null) activeGroup = beamGroupSeq++;
+        groupForBeat.push(activeGroup);
+      });
+
+      // Triplet grouping: runs of triplet-duration beats (duration ends in "t"),
+      // broken by any non-triplet beat. Each run >=1 gets a "3" bracket.
+      let activeTriplet: number | null = null;
+      const tripletForBeat: (number | null)[] = [];
+      measure.beats.forEach((b) => {
+        const isTriplet = b.duration.endsWith("t");
+        if (!isTriplet) {
+          activeTriplet = null;
+          tripletForBeat.push(null);
+          return;
+        }
+        if (activeTriplet === null) activeTriplet = tripletGroupSeq++;
+        tripletForBeat.push(activeTriplet);
+      });
+
+      measure.beats.forEach((b, i) => {
+        const w = beatWidth(b);
+        beats.push({
+          x: x + w / 2,
+          measureIndex: localMeasureIndex,
+          globalBeatIndex: globalBeatIndex++,
+          notes: b.notes,
+          duration: b.duration,
+          dotted: b.dotted,
+          technique: b.technique,
+          isRest: b.isRest,
+          beamGroup: groupForBeat[i],
+          tripletGroup: tripletForBeat[i],
+          flags: flagsFor(b.duration),
+          chord: b.chord,
+        });
+        x += w;
+      });
+
+      const barX = x + LAYOUT.MEASURE_PAD / 2;
+      barlines.push({ x: barX, final: localMeasureIndex === totalMeasures - 1 });
+      x += LAYOUT.MEASURE_PAD;
+      measureCursor += 1;
+    });
+
+    systems.push({
+      yTop,
+      lineYs,
+      lineX0: LAYOUT.LEFT_PAD,
+      lineX1: x,
+      beats,
+      barlines,
+    });
+  });
+
+  const lastSystem = systems[systems.length - 1];
+  const height =
+    (lastSystem ? lastSystem.yTop + staffHeight : LAYOUT.TOP_PAD) +
+    LAYOUT.STEM_LEN +
+    LAYOUT.BOTTOM_PAD;
+
+  // Grow to fit the widest system (a bars-per-line cap can push past the container).
+  const contentRight = systems.reduce((m, s) => Math.max(m, s.lineX1), 0);
+  const width = Math.max(opts.width, contentRight + LAYOUT.RIGHT_PAD);
+
+  return {
+    systems,
+    width,
+    height,
+    stringCount: opts.stringCount,
+    tuning: opts.tuning,
+    timeSig: opts.timeSig,
+    keySig: doc.keySig,
+    header,
+    chordRowH,
+    showStems: opts.showStems,
+    showFingerings: opts.showFingerings,
+  };
+}

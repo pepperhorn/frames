@@ -1,0 +1,55 @@
+---
+// Headless render target. Loaded by the server's Playwright instance to
+// produce handdrawn SVGs (and any other render that needs real DOM layout).
+// Not user-facing — emits a minimal page that exposes window.renderFrame.
+export const prerender = true;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>render-host</title>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 400; src: url("/fonts/Poppins-Regular.ttf") format("truetype"); }
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url("/fonts/Poppins-Medium.ttf") format("truetype"); }
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url("/fonts/Poppins-SemiBold.ttf") format("truetype"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url("/fonts/Poppins-Bold.ttf") format("truetype"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url("/fonts/Poppins-ExtraBold.ttf") format("truetype"); }
+      @font-face { font-family: "Patrick Hand"; src: url("/fonts/PatrickHand-Regular.ttf") format("truetype"); }
+      @font-face { font-family: "Caveat"; src: url("/fonts/Caveat-VF.ttf") format("truetype-variations"); font-weight: 400 700; }
+      @font-face { font-family: "Shadows Into Light"; src: url("/fonts/ShadowsIntoLight-Regular.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; src: url("/fonts/Inter-VF.ttf") format("truetype-variations"); font-weight: 100 900; }
+      body { margin: 0; font-family: Poppins, sans-serif; }
+      #host { width: 800px; }
+    </style>
+  </head>
+  <body>
+    <div id="host"></div>
+    <script>
+      import { renderFrameInto } from "@/lib/render/renderIntoElement";
+      import type { FrameSpec } from "@/lib/render/types";
+
+      declare global {
+        interface Window {
+          renderFrame?: (spec: FrameSpec) => Promise<string | null>;
+          __rendererReady?: boolean;
+        }
+      }
+
+      // Wait for fonts to load before declaring ready so the first render
+      // gets correct metrics.
+      const ready = (async () => {
+        try { await document.fonts.ready; } catch {}
+      })();
+
+      window.renderFrame = async (spec: FrameSpec) => {
+        await ready;
+        const host = document.getElementById("host");
+        if (!host) return null;
+        const svg = renderFrameInto(host, spec);
+        return svg ? svg.outerHTML : null;
+      };
+      window.__rendererReady = true;
+    </script>
+  </body>
+</html>
