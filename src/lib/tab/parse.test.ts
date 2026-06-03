@@ -104,4 +104,43 @@ describe("parseTab", () => {
     const doc = parseTab("q:5/2\nq:9/9/9/9", opts);
     expect(doc.errors[0].line).toBe(2);
   });
+
+  it("attaches a chord symbol label to the following beat", () => {
+    const doc = parseTab("[Am] q:5/2", opts);
+    expect(doc.errors).toEqual([]);
+    expect(doc.measures[0].beats[0].chord).toEqual({ label: "Am", frame: undefined });
+  });
+
+  it("parses a fret-code into a frame (low to high, x = muted)", () => {
+    const doc = parseTab("[x02210] q:5/2", opts);
+    expect(doc.errors).toEqual([]);
+    expect(doc.measures[0].beats[0].chord).toEqual({
+      label: undefined,
+      frame: { frets: [-1, 0, 2, 2, 1, 0] },
+    });
+  });
+
+  it("parses label:code together with a colon delimiter", () => {
+    const doc = parseTab("[Am:x02210] q:5/2", opts);
+    const chord = doc.measures[0].beats[0].chord;
+    expect(chord?.label).toBe("Am");
+    expect(chord?.frame?.frets).toEqual([-1, 0, 2, 2, 1, 0]);
+  });
+
+  it("supports dash-separated codes for frets above 9", () => {
+    const doc = parseTab("[Bm:x-13-15-15-14-13] q:5/2", opts);
+    expect(doc.errors).toEqual([]);
+    expect(doc.measures[0].beats[0].chord?.frame?.frets).toEqual([-1, 13, 15, 15, 14, 13]);
+  });
+
+  it("errors when a fret-code has the wrong number of strings", () => {
+    const doc = parseTab("[C:0221] q:5/2", opts); // guitar needs 6
+    expect(doc.errors.length).toBe(1);
+    expect(doc.measures[0].beats[0].chord).toBeUndefined();
+  });
+
+  it("errors when a chord annotation has no following beat", () => {
+    const doc = parseTab("q:5/2 [Am]", opts);
+    expect(doc.errors.some((e) => /no following note/.test(e.message))).toBe(true);
+  });
 });

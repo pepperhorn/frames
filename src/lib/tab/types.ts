@@ -18,12 +18,25 @@ export interface TabNote {
   finger?: number;
 }
 
+/** A chord frame voicing: one entry per string, low-pitch -> high-pitch.
+ *  -1 = muted, 0 = open, N = fret N. */
+export interface ChordFrame {
+  frets: number[];
+}
+
+/** Chord annotation shown above a beat: a text symbol and/or a mini frame. */
+export interface ChordAnnotation {
+  label?: string;
+  frame?: ChordFrame;
+}
+
 export interface Beat {
   notes: TabNote[]; // empty = rest
   duration: Duration;
   dotted: boolean;
   technique?: Technique;
   isRest: boolean;
+  chord?: ChordAnnotation;
 }
 
 export interface Measure {

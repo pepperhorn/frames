@@ -3,6 +3,7 @@ import { beatFraction, measureCapacity, parseDurationToken } from "./durations";
 import { stringCountFor, TAB_INSTRUMENTS } from "./instruments";
 import type {
   Beat,
+  ChordAnnotation,
   Duration,
   Measure,
   ParseError,
@@ -31,6 +32,55 @@ const TECHNIQUE_TOKENS: Record<string, Technique> = {
 };
 
 const EPS = 1e-9;
+
+/** A whitespace token inside [..] is a fret-code if it's all digits/x (compact,
+ *  one char per string) or dash-separated fret numbers (for frets above 9). */
+function isFretCode(s: string): boolean {
+  return /^[0-9xX]{2,}$/.test(s) || /^([0-9]+|[xX])(-([0-9]+|[xX]))+$/.test(s);
+}
+
+function parseFretCode(code: string, stringCount: number): number[] | null {
+  const segs = code.includes("-") ? code.split("-") : code.split("");
+  const frets = segs.map((c) => (c === "x" || c === "X" ? -1 : Number(c)));
+  if (frets.some((f) => !Number.isInteger(f) || f < -1)) return null;
+  if (frets.length !== stringCount) return null;
+  return frets;
+}
+
+/** Parse the inside of a [..] token into a chord annotation. Syntax:
+ *  [Am] label only · [x02210] frame only · [Am:x02210] label + frame
+ *  (label and fret-code separated by ":"). */
+function parseChordToken(
+  content: string,
+  stringCount: number,
+): { ann: ChordAnnotation } | { error: string } | null {
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+
+  let labelStr = "";
+  let codeStr = "";
+  const ci = trimmed.indexOf(":");
+  if (ci >= 0) {
+    labelStr = trimmed.slice(0, ci).trim();
+    codeStr = trimmed.slice(ci + 1).trim();
+  } else if (isFretCode(trimmed)) {
+    codeStr = trimmed;
+  } else {
+    labelStr = trimmed;
+  }
+
+  const label = labelStr || undefined;
+  let frame: { frets: number[] } | undefined;
+  if (codeStr) {
+    const frets = parseFretCode(codeStr, stringCount);
+    if (!frets) {
+      return { error: `chord code "${codeStr}" must have ${stringCount} strings (low to high)` };
+    }
+    frame = { frets };
+  }
+  if (!label && !frame) return null;
+  return { ann: { label, frame } };
+}
 
 function parseNote(seg: string, stringCount: number): TabNote | null {
   const parts = seg.split("/");
@@ -64,6 +114,8 @@ export function parseTab(text: string, opts: ParseOptions): TabDoc {
   let curDuration: Duration = "q";
   let curDotted = false;
   let lastBeat: Beat | null = null;
+  let pendingChord: ChordAnnotation | null = null;
+  let pendingChordLine = 0;
 
   function closeMeasure(forced: boolean) {
     if (curMeasure.length === 0) return;
@@ -73,6 +125,10 @@ export function parseTab(text: string, opts: ParseOptions): TabDoc {
   }
 
   function pushBeat(beat: Beat) {
+    if (pendingChord) {
+      beat.chord = pendingChord;
+      pendingChord = null;
+    }
     curMeasure.push(beat);
     lastBeat = beat;
     curFrac += beatFraction(beat.duration, beat.dotted);
@@ -82,12 +138,24 @@ export function parseTab(text: string, opts: ParseOptions): TabDoc {
   const lines = text.split("\n");
   lines.forEach((line, idx) => {
     const lineNo = idx + 1;
-    const tokens = line.trim().split(/\s+/).filter(Boolean);
+    // Match [..] groups (which may contain spaces) or any non-space run.
+    const tokens = line.match(/\[[^\]]*\]|\S+/g) ?? [];
 
     for (const raw of tokens) {
       // Barline
       if (raw === "|") {
         closeMeasure(true);
+        continue;
+      }
+      // Chord annotation attaches to the NEXT beat
+      if (raw.startsWith("[") && raw.endsWith("]")) {
+        const res = parseChordToken(raw.slice(1, -1), stringCount);
+        if (res && "error" in res) {
+          errors.push({ line: lineNo, message: res.error });
+        } else if (res) {
+          pendingChord = res.ann;
+          pendingChordLine = lineNo;
+        }
         continue;
       }
       // Technique attaches to the previous beat
@@ -148,6 +216,10 @@ export function parseTab(text: string, opts: ParseOptions): TabDoc {
   });
 
   closeMeasure(false);
+
+  if (pendingChord) {
+    errors.push({ line: pendingChordLine, message: "chord annotation has no following note" });
+  }
 
   return {
     instrument: opts.instrument,

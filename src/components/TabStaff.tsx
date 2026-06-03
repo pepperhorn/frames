@@ -10,6 +10,8 @@ interface TabStaffProps {
   backgroundColor?: string;
   fretFontSize?: number;
   fingerFontSize?: number;
+  chordFontSize?: number;
+  chordFontFamily?: string;
   className?: string;
 }
 
@@ -23,8 +25,11 @@ export function TabStaff({
   backgroundColor = "transparent",
   fretFontSize = 13,
   fingerFontSize = 10,
+  chordFontSize = 13,
+  chordFontFamily,
   className,
 }: TabStaffProps) {
+  const chordFont = chordFontFamily || fontFamily;
   return (
     <svg
       className={className}
@@ -67,6 +72,8 @@ export function TabStaff({
           fontFamily={fontFamily}
           fretFontSize={fretFontSize}
           fingerFontSize={fingerFontSize}
+          chordFontSize={chordFontSize}
+          chordFont={chordFont}
         />
       ))}
     </svg>
@@ -83,6 +90,8 @@ function SystemView({
   fontFamily,
   fretFontSize,
   fingerFontSize,
+  chordFontSize,
+  chordFont,
 }: {
   sys: TabSystem;
   layout: TabLayout;
@@ -93,6 +102,8 @@ function SystemView({
   fontFamily: string;
   fretFontSize: number;
   fingerFontSize: number;
+  chordFontSize: number;
+  chordFont: string;
 }) {
   const beamY = stemBaseY + LAYOUT.STEM_LEN;
   return (
@@ -178,6 +189,10 @@ function SystemView({
 
       {/* Fretting-hand fingering row beneath the staff */}
       {layout.showFingerings && drawFingerings(sys, beamY, color, fontFamily, fingerFontSize)}
+
+      {/* Chord symbols + mini frames in the row above the staff */}
+      {layout.chordRowH > 0 &&
+        drawChordRow(sys, layout, color, chordFont, chordFontSize)}
     </g>
   );
 }
@@ -215,6 +230,117 @@ function drawFingerings(
       );
     });
   }
+  return out;
+}
+
+function drawChordRow(
+  sys: TabSystem,
+  layout: TabLayout,
+  color: string,
+  font: string,
+  fontSize: number,
+) {
+  const out: ReactElement[] = [];
+  const topLineY = sys.lineYs[0];
+  const rowTop = topLineY - layout.chordRowH;
+  const labelY = topLineY - fontSize / 2 - 5; // just above the staff, consistent row
+  for (const beat of sys.beats) {
+    const chord = beat.chord;
+    if (!chord) continue;
+    if (chord.frame) {
+      out.push(
+        ...drawChordFrame(chord.frame.frets, beat.x, rowTop + 2, layout.stringCount, color),
+      );
+    }
+    if (chord.label) {
+      out.push(
+        <text
+          key={`chord-${beat.globalBeatIndex}`}
+          className="tab-chord-label"
+          x={beat.x}
+          y={labelY}
+          fontSize={fontSize}
+          fontFamily={font}
+          fontWeight={600}
+          fill={color}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          {chord.label}
+        </text>,
+      );
+    }
+  }
+  return out;
+}
+
+function drawChordFrame(
+  frets: number[],
+  cx: number,
+  top: number,
+  stringCount: number,
+  color: string,
+) {
+  const cell = LAYOUT.CHORD_CELL;
+  const gridW = (stringCount - 1) * cell;
+  const left = cx - gridW / 2;
+  const rows = 4;
+  const nonzero = frets.filter((f) => f > 0);
+  const maxFret = nonzero.length ? Math.max(...nonzero) : 0;
+  const baseFret = maxFret > rows ? Math.min(...nonzero) : 1;
+  const markerY = top + 3;
+  const nutY = top + 9;
+  const gridBottom = nutY + rows * cell;
+  const out: ReactElement[] = [];
+
+  // string (vertical) lines
+  for (let i = 0; i < stringCount; i++) {
+    const x = left + i * cell;
+    out.push(
+      <line key={`cs-${i}`} x1={x} y1={nutY} x2={x} y2={gridBottom} stroke={color} strokeWidth={0.8} />,
+    );
+  }
+  // fret (horizontal) lines; the nut is heavier when the frame starts at fret 1
+  for (let r = 0; r <= rows; r++) {
+    const y = nutY + r * cell;
+    out.push(
+      <line
+        key={`cf-${r}`}
+        x1={left}
+        y1={y}
+        x2={left + gridW}
+        y2={y}
+        stroke={color}
+        strokeWidth={r === 0 && baseFret === 1 ? 2 : 0.8}
+      />,
+    );
+  }
+  if (baseFret > 1) {
+    out.push(
+      <text key="cbf" x={left - 4} y={nutY + cell * 0.7} fontSize={7} fill={color} textAnchor="end" dominantBaseline="central">
+        {baseFret}
+      </text>,
+    );
+  }
+  // per-string dots / open / muted markers
+  frets.forEach((f, i) => {
+    const x = left + i * cell;
+    if (f === -1) {
+      out.push(
+        <text key={`cm-${i}`} x={x} y={markerY} fontSize={7} fill={color} textAnchor="middle" dominantBaseline="central">
+          ×
+        </text>,
+      );
+    } else if (f === 0) {
+      out.push(
+        <circle key={`co-${i}`} cx={x} cy={markerY} r={2.2} fill="none" stroke={color} strokeWidth={0.8} />,
+      );
+    } else {
+      out.push(
+        <circle key={`cd-${i}`} cx={x} cy={nutY + (f - baseFret + 0.5) * cell} r={cell * 0.38} fill={color} />,
+      );
+    }
+  });
   return out;
 }
 

@@ -51,6 +51,8 @@ export function TabWorkbench() {
   const [feelSize, setFeelSize] = useState(12);
   const [keySize, setKeySize] = useState(12);
   const [showKey, setShowKey] = useState(true);
+  const [chordFontFamily, setChordFontFamily] = useState("Poppins, sans-serif");
+  const [chordFontSize, setChordFontSize] = useState(13);
   const [showLookFeel, setShowLookFeel] = useState(false);
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -113,10 +115,12 @@ export function TabWorkbench() {
         feelSize,
         keySize,
         showKey,
+        chordFontSize,
       }),
     [
       renderDoc, showStems, showFingerings, previewWidth, barsPerLine,
       title, subtitle, feel, headerGap, titleSize, subtitleSize, feelSize, keySize, showKey,
+      chordFontSize,
     ],
   );
 
@@ -301,6 +305,24 @@ export function TabWorkbench() {
                     onChange={(e) => setFingerFontSize(clampSize(e.target.value, 7, 24, 10))}
                   />
                 </Label>
+                <Label className="col-span-2 md:col-span-1">
+                  <span>Chord font</span>
+                  <Select value={chordFontFamily} onChange={(e) => setChordFontFamily(e.target.value)}>
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f.value} value={f.value}>{f.label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label>
+                  <span>Chord size</span>
+                  <Input
+                    type="number"
+                    min={8}
+                    max={32}
+                    value={chordFontSize}
+                    onChange={(e) => setChordFontSize(clampSize(e.target.value, 8, 32, 13))}
+                  />
+                </Label>
               </div>
               <div className="lf-text-grid grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Label>
@@ -389,6 +411,8 @@ export function TabWorkbench() {
                   fontFamily={fontFamily}
                   fretFontSize={fretFontSize}
                   fingerFontSize={fingerFontSize}
+                  chordFontSize={chordFontSize}
+                  chordFontFamily={chordFontFamily}
                 />
               </div>
             </div>
@@ -417,7 +441,8 @@ export function TabWorkbench() {
                 e.g. <code>q:5/2</code> note · <code>q:2/4:3/5</code> chord · append{" "}
                 <code>d</code> = dotted, <code>t</code> = triplet (<code>qd:</code>,{" "}
                 <code>et:</code>) · <code>(h)</code> hammer · <code>r</code> rest ·{" "}
-                <code>x</code> repeat · <code>|</code> barline
+                <code>x</code> repeat · <code>|</code> barline ·{" "}
+                <code>[Am]</code> / <code>[Am:x02210]</code> chord symbol + frame (frets low→high)
               </div>
             )}
           </CardContent>

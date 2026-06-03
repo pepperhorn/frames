@@ -1,6 +1,14 @@
 // src/lib/tab/layout.ts
 import { beatFraction } from "./durations";
-import type { Beat, Duration, Measure, TabDoc, Technique, TimeSig } from "./types";
+import type {
+  Beat,
+  ChordAnnotation,
+  Duration,
+  Measure,
+  TabDoc,
+  Technique,
+  TimeSig,
+} from "./types";
 
 export const LAYOUT = {
   LINE_GAP: 14,
@@ -13,6 +21,8 @@ export const LAYOUT = {
   BEAT_MIN_W: 28,
   BEAT_SCALE: 150,
   BOTTOM_PAD: 56,
+  CHORD_CELL: 7, // px per string-gap / fret-row in a mini chord frame
+  CHORD_FRAME_H: 44, // reserved height for a mini frame (incl. open/muted markers)
 } as const;
 
 export interface PlacedBeat {
@@ -27,6 +37,7 @@ export interface PlacedBeat {
   beamGroup: number | null; // shared id for beamed runs; null if not beam-eligible
   tripletGroup: number | null; // shared id for consecutive triplet beats; null otherwise
   flags: number; // 0 = quarter or longer, 1 = eighth, 2 = sixteenth
+  chord?: ChordAnnotation; // symbol/frame drawn in the chord row above this beat
 }
 
 export interface PlacedBarline {
@@ -60,6 +71,7 @@ export interface TabLayout {
   timeSig: TimeSig;
   keySig: string;
   header: HeaderLine[];
+  chordRowH: number; // vertical space reserved above each system for chord annotations
   showStems: boolean;
   showFingerings: boolean;
 }
@@ -86,6 +98,8 @@ export interface LayoutOptions {
   keySize?: number;
   /** Show the "Key: X" line (default true). */
   showKey?: boolean;
+  /** Chord-symbol font size, used to reserve the chord row height. */
+  chordFontSize?: number;
 }
 
 /** Build the top-left header (title/subtitle/feel/key) and the top padding it needs. */
@@ -137,6 +151,14 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
   const staffHeight = (opts.stringCount - 1) * LAYOUT.LINE_GAP;
   const { lines: header, topPad } = buildHeader(opts, doc.keySig);
 
+  // Reserve a chord row above each system if any beat carries a chord annotation.
+  const allBeats = doc.measures.flatMap((m) => m.beats);
+  const hasChordLabel = allBeats.some((b) => b.chord?.label);
+  const hasChordFrame = allBeats.some((b) => b.chord?.frame);
+  const chordSymbolH = hasChordLabel ? (opts.chordFontSize ?? 13) + 4 : 0;
+  const chordFrameH = hasChordFrame ? LAYOUT.CHORD_FRAME_H : 0;
+  const chordRowH = chordFrameH + chordSymbolH + (chordFrameH || chordSymbolH ? 6 : 0);
+
   // 1. Pack measures into systems. With an explicit bars-per-line, that count is
   //    authoritative (the staff may grow wider than the container and scroll).
   //    Without one, fall back to wrapping whenever the next measure won't fit.
@@ -166,7 +188,8 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
   let measureCursor = 0;
 
   rows.forEach((rowMeasures, rowIdx) => {
-    const yTop = topPad + rowIdx * (staffHeight + LAYOUT.SYSTEM_GAP);
+    const yTop =
+      topPad + chordRowH + rowIdx * (staffHeight + chordRowH + LAYOUT.SYSTEM_GAP);
     const lineYs = Array.from({ length: opts.stringCount }, (_, i) => yTop + i * LAYOUT.LINE_GAP);
 
     const beats: PlacedBeat[] = [];
@@ -220,6 +243,7 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
           beamGroup: groupForBeat[i],
           tripletGroup: tripletForBeat[i],
           flags: flagsFor(b.duration),
+          chord: b.chord,
         });
         x += w;
       });
@@ -259,6 +283,7 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
     timeSig: opts.timeSig,
     keySig: doc.keySig,
     header,
+    chordRowH,
     showStems: opts.showStems,
     showFingerings: opts.showFingerings,
   };
