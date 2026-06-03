@@ -50,6 +50,7 @@ export interface TabLayout {
   stringCount: number;
   tuning: string[];
   timeSig: TimeSig;
+  keySig: string;
   showStems: boolean;
   showFingerings: boolean;
 }
@@ -196,6 +197,7 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
     stringCount: opts.stringCount,
     tuning: opts.tuning,
     timeSig: opts.timeSig,
+    keySig: doc.keySig,
     showStems: opts.showStems,
     showFingerings: opts.showFingerings,
   };

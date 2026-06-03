@@ -112,6 +112,23 @@ function SystemView({
         </g>
       )}
 
+      {/* Key label, top-left of the diagram (first system only) */}
+      {showTimeSig && (
+        <text
+          className="tab-key-label"
+          x={4}
+          y={10}
+          fontSize={12}
+          fontFamily={fontFamily}
+          fontWeight={600}
+          fill={color}
+          textAnchor="start"
+          dominantBaseline="central"
+        >
+          Key: {layout.keySig}
+        </text>
+      )}
+
       {/* Barlines */}
       {sys.barlines.map((bar, i) => (
         <line

@@ -19,7 +19,8 @@ import {
 
 type InstrumentUi = "guitar" | "bass" | "ukulele";
 
-const KEYS = ["C", "G", "D", "A", "E", "B", "F#", "F", "Bb", "Eb", "Ab", "Db"];
+const MAJOR_KEYS = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"];
+const MINOR_KEYS = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "Bbm", "Fm", "Cm", "Gm", "Dm"];
 const TIME_SIGS = ["4/4", "3/4", "2/4", "6/8", "12/8"];
 
 const SAMPLE = `q:0/3 e:0/2 0/1 q:1/2 | h:2/3 q:r q:3/4
@@ -61,17 +62,32 @@ export function TabWorkbench() {
   const lastGoodDoc = useRef<TabDoc | null>(null);
   if (doc.errors.length === 0) lastGoodDoc.current = doc;
   const renderDoc = doc.errors.length === 0 ? doc : lastGoodDoc.current ?? doc;
+
+  // Track the preview's available width so the staff wraps to fill it.
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const [previewWidth, setPreviewWidth] = useState(880);
+  useEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      if (w > 0) setPreviewWidth(Math.max(320, Math.floor(w)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const layout = useMemo(
     () =>
       layoutTab(renderDoc, {
-        width: 880,
+        width: previewWidth,
         tuning: renderDoc.tuning,
         stringCount: renderDoc.stringCount,
         timeSig: renderDoc.timeSig,
         showStems,
         showFingerings,
       }),
-    [renderDoc, showStems, showFingerings],
+    [renderDoc, showStems, showFingerings, previewWidth],
   );
 
   const playerRef = useRef<TabPlayerHandle | null>(null);
@@ -115,9 +131,8 @@ export function TabWorkbench() {
     downloadPngFromContainer(previewRef.current, filename("png"), { backgroundColor: "#ffffff" });
 
   return (
-    <div className="tab-workbench grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)]">
-      <div className="tab-controls flex flex-col gap-6">
-        <Card className="tab-setup-card">
+    <div className="tab-workbench flex flex-col gap-6">
+      <Card className="tab-setup-card">
           <CardHeader>
             <CardTitle className="text-lg">Instrument & Time</CardTitle>
           </CardHeader>
@@ -147,9 +162,16 @@ export function TabWorkbench() {
               <Label>
                 <span>Key</span>
                 <Select value={keySig} onChange={(e) => setKeySig(e.target.value)}>
-                  {KEYS.map((k) => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
+                  <optgroup label="Major">
+                    {MAJOR_KEYS.map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Minor">
+                    {MINOR_KEYS.map((k) => (
+                      <option key={k} value={k}>{k.slice(0, -1)} minor</option>
+                    ))}
+                  </optgroup>
                 </Select>
               </Label>
               <Label>
@@ -190,6 +212,36 @@ export function TabWorkbench() {
           </CardContent>
         </Card>
 
+        <Card className="preview-card">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-lg">Preview</CardTitle>
+            <div className="preview-actions flex gap-2">
+              {playing ? (
+                <Button size="sm" variant="outline" onClick={stop} className="stop-btn">
+                  Stop
+                </Button>
+              ) : (
+                <Button size="sm" onClick={play} className="play-btn">
+                  ▶ Play
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={downloadSvg} className="download-svg-btn">
+                SVG
+              </Button>
+              <Button size="sm" variant="outline" onClick={downloadPng} className="download-png-btn">
+                PNG
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div ref={measureRef} className="preview-measure w-full">
+              <div ref={previewRef} className="preview-svg-wrap overflow-x-auto bg-white rounded">
+                <TabStaff layout={layout} cursorIndex={cursorIndex} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="tab-editor-card">
           <CardHeader>
             <CardTitle className="text-lg">Tab</CardTitle>
@@ -216,37 +268,6 @@ export function TabWorkbench() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <div className="tab-preview lg:sticky lg:top-6 self-start flex flex-col gap-4">
-        <Card className="preview-card">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-lg">Preview</CardTitle>
-            <div className="preview-actions flex gap-2">
-              {playing ? (
-                <Button size="sm" variant="outline" onClick={stop} className="stop-btn">
-                  Stop
-                </Button>
-              ) : (
-                <Button size="sm" onClick={play} className="play-btn">
-                  ▶ Play
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={downloadSvg} className="download-svg-btn">
-                SVG
-              </Button>
-              <Button size="sm" variant="outline" onClick={downloadPng} className="download-png-btn">
-                PNG
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div ref={previewRef} className="preview-svg-wrap overflow-x-auto bg-white rounded">
-              <TabStaff layout={layout} cursorIndex={cursorIndex} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
