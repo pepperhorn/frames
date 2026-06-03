@@ -305,8 +305,9 @@ function drawChordFrame(
   const nonzero = frets.filter((f) => f > 0);
   const maxFret = nonzero.length ? Math.max(...nonzero) : 0;
   const baseFret = maxFret > rows ? Math.min(...nonzero) : 1;
-  const markerY = top + 3;
-  const nutY = top + 9;
+  const markerGap = cell + 3; // open/muted marker band above the nut, scales with cell
+  const markerY = top + markerGap / 2;
+  const nutY = top + markerGap;
   const gridBottom = nutY + rows * cell;
   const out: ReactElement[] = [];
 
@@ -334,7 +335,7 @@ function drawChordFrame(
   }
   if (baseFret > 1) {
     out.push(
-      <text key={`${kp}-cbf`} x={left - 4} y={nutY + cell * 0.7} fontSize={7} fill={color} textAnchor="end" dominantBaseline="central">
+      <text key={`${kp}-cbf`} x={left - 4} y={nutY + cell * 0.7} fontSize={cell} fill={color} textAnchor="end" dominantBaseline="central">
         {baseFret}
       </text>,
     );
@@ -368,13 +369,13 @@ function drawChordFrame(
     const x = left + i * cell;
     if (f === -1) {
       out.push(
-        <text key={`${kp}-cm-${i}`} x={x} y={markerY} fontSize={7} fill={color} textAnchor="middle" dominantBaseline="central">
+        <text key={`${kp}-cm-${i}`} x={x} y={markerY} fontSize={cell + 2} fill={color} textAnchor="middle" dominantBaseline="central">
           ×
         </text>,
       );
     } else if (f === 0) {
       out.push(
-        <circle key={`${kp}-co-${i}`} cx={x} cy={markerY} r={2.2} fill="none" stroke={color} strokeWidth={0.8} />,
+        <circle key={`${kp}-co-${i}`} cx={x} cy={markerY} r={cell * 0.3} fill="none" stroke={color} strokeWidth={Math.max(0.8, cell * 0.1)} />,
       );
     } else if (!barred.has(i)) {
       out.push(
