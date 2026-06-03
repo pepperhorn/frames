@@ -7,7 +7,7 @@ import type { TimeSig } from "./types";
 const ts: TimeSig = { num: 4, den: 4 };
 const opts = { instrument: "guitar" as const, keySig: "C", timeSig: ts };
 
-function layoutFor(src: string, width = 900) {
+function layoutFor(src: string, width = 900, barsPerLine?: number) {
   const doc = parseTab(src, opts);
   return layoutTab(doc, {
     width,
@@ -16,6 +16,7 @@ function layoutFor(src: string, width = 900) {
     timeSig: doc.timeSig,
     showStems: true,
     showFingerings: false,
+    barsPerLine,
   });
 }
 
@@ -29,6 +30,14 @@ describe("layoutTab", () => {
   it("assigns a unique sequential globalBeatIndex", () => {
     const placed = layoutFor("q:1/1 q:1/1 q:1/1 q:1/1").systems.flatMap((s) => s.beats);
     expect(placed.map((b) => b.globalBeatIndex)).toEqual([0, 1, 2, 3]);
+  });
+
+  it("caps measures per system at barsPerLine even when they'd fit the width", () => {
+    // 4 full 4/4 measures, plenty of width, but bars-per-line = 2 → 2 systems of 2.
+    const src = Array(4).fill("q:1/1 q:1/1 q:1/1 q:1/1").join(" ");
+    const layout = layoutFor(src, 2000, 2);
+    expect(layout.systems.length).toBe(2);
+    expect(layout.systems.every((s) => s.barlines.length === 2)).toBe(true);
   });
 
   it("wraps to multiple systems when the width is small", () => {

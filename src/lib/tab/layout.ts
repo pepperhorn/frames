@@ -62,6 +62,8 @@ export interface LayoutOptions {
   timeSig: TimeSig;
   showStems: boolean;
   showFingerings: boolean;
+  /** Hard cap on measures per system; a line still wraps earlier if too wide. */
+  barsPerLine?: number;
 }
 
 function flagsFor(duration: Duration): number {
@@ -85,13 +87,17 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
   const avail = opts.width - LAYOUT.LEFT_PAD - LAYOUT.RIGHT_PAD;
   const staffHeight = (opts.stringCount - 1) * LAYOUT.LINE_GAP;
 
-  // 1. Greedy pack measures into systems by width (always >=1 measure per system).
+  // 1. Pack measures into systems. With an explicit bars-per-line, that count is
+  //    authoritative (the staff may grow wider than the container and scroll).
+  //    Without one, fall back to wrapping whenever the next measure won't fit.
+  const maxBars = opts.barsPerLine && opts.barsPerLine > 0 ? opts.barsPerLine : Infinity;
   const rows: Measure[][] = [];
   let row: Measure[] = [];
   let rowWidth = 0;
   for (const measure of doc.measures) {
     const w = measureWidth(measure);
-    if (row.length > 0 && rowWidth + w > avail) {
+    const widthWrap = !isFinite(maxBars) && rowWidth + w > avail;
+    if (row.length > 0 && (row.length >= maxBars || widthWrap)) {
       rows.push(row);
       row = [];
       rowWidth = 0;
@@ -190,9 +196,13 @@ export function layoutTab(doc: TabDoc, opts: LayoutOptions): TabLayout {
     LAYOUT.STEM_LEN +
     LAYOUT.BOTTOM_PAD;
 
+  // Grow to fit the widest system (a bars-per-line cap can push past the container).
+  const contentRight = systems.reduce((m, s) => Math.max(m, s.lineX1), 0);
+  const width = Math.max(opts.width, contentRight + LAYOUT.RIGHT_PAD);
+
   return {
     systems,
-    width: opts.width,
+    width,
     height,
     stringCount: opts.stringCount,
     tuning: opts.tuning,

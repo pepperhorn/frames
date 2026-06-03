@@ -22,6 +22,7 @@ type InstrumentUi = "guitar" | "bass" | "ukulele";
 const MAJOR_KEYS = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"];
 const MINOR_KEYS = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "Bbm", "Fm", "Cm", "Gm", "Dm"];
 const TIME_SIGS = ["4/4", "3/4", "2/4", "6/8", "12/8"];
+const BARS_PER_LINE = [1, 2, 3, 4, 5, 6, 8];
 
 const SAMPLE = `q:0/3 e:0/2 0/1 q:1/2 | h:2/3 q:r q:3/4
 e:0/1 0/2 (h) q:2/2 q:3/2`;
@@ -33,6 +34,7 @@ export function TabWorkbench() {
   const [keySig, setKeySig] = useState("C");
   const [timeSigStr, setTimeSigStr] = useState("4/4");
   const [bpm, setBpm] = useState(96);
+  const [barsPerLine, setBarsPerLine] = useState(4);
   const [showStems, setShowStems] = useState(true);
   const [showFingerings, setShowFingerings] = useState(false);
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
@@ -86,8 +88,9 @@ export function TabWorkbench() {
         timeSig: renderDoc.timeSig,
         showStems,
         showFingerings,
+        barsPerLine,
       }),
-    [renderDoc, showStems, showFingerings, previewWidth],
+    [renderDoc, showStems, showFingerings, previewWidth, barsPerLine],
   );
 
   const playerRef = useRef<TabPlayerHandle | null>(null);
@@ -158,7 +161,7 @@ export function TabWorkbench() {
                 </Select>
               )}
             </div>
-            <div className="setup-grid grid grid-cols-3 gap-3">
+            <div className="setup-grid grid grid-cols-2 md:grid-cols-4 gap-3">
               <Label>
                 <span>Key</span>
                 <Select value={keySig} onChange={(e) => setKeySig(e.target.value)}>
@@ -191,6 +194,17 @@ export function TabWorkbench() {
                   value={bpm}
                   onChange={(e) => setBpm(Math.max(30, Number(e.target.value) || 96))}
                 />
+              </Label>
+              <Label>
+                <span>Bars / line</span>
+                <Select
+                  value={String(barsPerLine)}
+                  onChange={(e) => setBarsPerLine(Number(e.target.value))}
+                >
+                  {BARS_PER_LINE.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </Select>
               </Label>
             </div>
             <div className="toggles flex flex-wrap gap-2 items-center pt-2 border-t">
@@ -261,8 +275,9 @@ export function TabWorkbench() {
               </div>
             ) : (
               <div className="tab-help text-xs text-muted-foreground">
-                e.g. <code>q:5/2</code> note · <code>q:2/4:3/5</code> chord ·{" "}
-                <code>ed:</code> dotted · <code>(h)</code> hammer · <code>r</code> rest ·{" "}
+                e.g. <code>q:5/2</code> note · <code>q:2/4:3/5</code> chord · append{" "}
+                <code>d</code> = dotted, <code>t</code> = triplet (<code>qd:</code>,{" "}
+                <code>et:</code>) · <code>(h)</code> hammer · <code>r</code> rest ·{" "}
                 <code>x</code> repeat · <code>|</code> barline
               </div>
             )}
