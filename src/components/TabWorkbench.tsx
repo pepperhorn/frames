@@ -17,6 +17,7 @@ import {
   downloadPngFromContainer,
   downloadSvgFromContainer,
   safeFilename,
+  triggerDownload,
 } from "@/lib/scaleExport";
 import { downloadPdfFromContainer } from "@/lib/tab/tabExport";
 
@@ -61,6 +62,8 @@ export function TabWorkbench() {
   const [frameSize, setFrameSize] = useState<FrameSize>("md");
   const [showFrames, setShowFrames] = useState(true);
   const [showLookFeel, setShowLookFeel] = useState(false);
+  const [showTabJson, setShowTabJson] = useState(false);
+  const [jsonCopied, setJsonCopied] = useState(false);
   const frameCell = FRAME_CELL[frameSize];
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -196,6 +199,42 @@ export function TabWorkbench() {
   const downloadPng = () =>
     downloadPngFromContainer(previewRef.current, filename("png"), { backgroundColor: "#ffffff" });
   const downloadPdf = () => downloadPdfFromContainer(previewRef.current, filename("pdf"));
+
+  // Structured JSON of the current tab (the parsed content + playback/layout meta).
+  const tabJson = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          instrument: doc.instrument,
+          tuning: doc.tuning,
+          stringCount: doc.stringCount,
+          keySig: doc.keySig,
+          timeSig: doc.timeSig,
+          bpm,
+          capo,
+          barsPerLine,
+          measures: doc.measures,
+        },
+        null,
+        2,
+      ),
+    [doc, bpm, capo, barsPerLine],
+  );
+  const copyTabJson = async () => {
+    try {
+      await navigator.clipboard.writeText(tabJson);
+      setJsonCopied(true);
+      setTimeout(() => setJsonCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  const saveTabJson = () => {
+    const blob = new Blob([tabJson], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, filename("json"));
+    URL.revokeObjectURL(url);
+  };
 
   const clampSize = (v: string, lo: number, hi: number, fallback: number) =>
     Math.min(hi, Math.max(lo, Number(v) || fallback));
@@ -510,6 +549,37 @@ export function TabWorkbench() {
               </div>
             )}
           </CardContent>
+        </Card>
+
+        <Card className="tab-json-card">
+          <div className="tab-json-head flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="tab-json-toggle flex-1 text-left"
+              onClick={() => setShowTabJson((v) => !v)}
+              aria-expanded={showTabJson}
+            >
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm">Tab JSON</CardTitle>
+                <span className="text-muted-foreground text-sm">{showTabJson ? "▲" : "▼"}</span>
+              </CardHeader>
+            </button>
+            <div className="tab-json-actions flex gap-2 pr-6">
+              <Button size="sm" variant="outline" className="copy-json-btn" onClick={copyTabJson}>
+                {jsonCopied ? "Copied!" : "⧉ Copy"}
+              </Button>
+              <Button size="sm" variant="outline" className="save-json-btn" onClick={saveTabJson}>
+                Save .json
+              </Button>
+            </div>
+          </div>
+          {showTabJson && (
+            <CardContent>
+              <pre className="tab-json text-xs overflow-x-auto bg-muted/40 rounded p-3">
+                {tabJson}
+              </pre>
+            </CardContent>
+          )}
         </Card>
     </div>
   );
