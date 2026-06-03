@@ -100,6 +100,13 @@ export interface LayoutOptions {
   showKey?: boolean;
   /** Chord-symbol font size, used to reserve the chord row height. */
   chordFontSize?: number;
+  /** Capo fret (0 = none); shown as a header line. */
+  capo?: number;
+}
+
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+function toRoman(n: number): string {
+  return ROMAN[n] ?? String(n);
 }
 
 /** Build the top-left header (title/subtitle/feel/key) and the top padding it needs. */
@@ -115,8 +122,10 @@ function buildHeader(
     specs.push({ text: opts.feel, size: opts.feelSize ?? 12, weight: 500, italic: true });
   if (opts.showKey !== false)
     specs.push({ text: `Key: ${keySig}`, size: opts.keySize ?? 12, weight: 600 });
+  if (opts.capo && opts.capo > 0)
+    specs.push({ text: `Capo ${toRoman(opts.capo)}`, size: opts.keySize ?? 12, weight: 600 });
 
-  // Extra top room only when there's a title block (key alone fits the default pad).
+  // Extra top room only when there's a title block (key/capo alone fit the default pad).
   const hasBlock = Boolean(opts.title || opts.subtitle || opts.feel);
   const lines: HeaderLine[] = [];
   let bottom = 6; // top margin above the first line

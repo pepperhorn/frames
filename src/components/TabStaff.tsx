@@ -322,7 +322,31 @@ function drawChordFrame(
       </text>,
     );
   }
-  // per-string dots / open / muted markers
+  const r = cell * 0.38;
+  // Barre detection: the lowest fretted fret, when it lands on >=2 strings, is the
+  // index-finger barre. Draw one bar across its span; higher notes sit on top as dots.
+  const barred = new Set<number>();
+  const fretted = frets.map((f, i) => ({ f, i })).filter((o) => o.f > 0);
+  const minFret = fretted.length ? Math.min(...fretted.map((o) => o.f)) : 0;
+  const barreIdxs = fretted.filter((o) => o.f === minFret).map((o) => o.i);
+  if (minFret > 0 && barreIdxs.length >= 2) {
+    const lo = Math.min(...barreIdxs);
+    const hi = Math.max(...barreIdxs);
+    const y = nutY + (minFret - baseFret + 0.5) * cell;
+    out.push(
+      <rect
+        key={`cbar-${minFret}`}
+        x={left + lo * cell - r}
+        y={y - r}
+        width={(hi - lo) * cell + 2 * r}
+        height={2 * r}
+        rx={r}
+        fill={color}
+      />,
+    );
+    barreIdxs.forEach((i) => barred.add(i));
+  }
+  // per-string dots / open / muted markers (skip strings covered by a barre)
   frets.forEach((f, i) => {
     const x = left + i * cell;
     if (f === -1) {
@@ -335,9 +359,9 @@ function drawChordFrame(
       out.push(
         <circle key={`co-${i}`} cx={x} cy={markerY} r={2.2} fill="none" stroke={color} strokeWidth={0.8} />,
       );
-    } else {
+    } else if (!barred.has(i)) {
       out.push(
-        <circle key={`cd-${i}`} cx={x} cy={nutY + (f - baseFret + 0.5) * cell} r={cell * 0.38} fill={color} />,
+        <circle key={`cd-${i}`} cx={x} cy={nutY + (f - baseFret + 0.5) * cell} r={r} fill={color} />,
       );
     }
   });

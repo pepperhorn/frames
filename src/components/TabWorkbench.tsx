@@ -36,6 +36,7 @@ export function TabWorkbench() {
   const [keySig, setKeySig] = useState("C");
   const [timeSigStr, setTimeSigStr] = useState("4/4");
   const [bpm, setBpm] = useState(96);
+  const [capo, setCapo] = useState(0);
   const [barsPerLine, setBarsPerLine] = useState(4);
   const [showStems, setShowStems] = useState(true);
   const [showFingerings, setShowFingerings] = useState(false);
@@ -116,11 +117,12 @@ export function TabWorkbench() {
         keySize,
         showKey,
         chordFontSize,
+        capo,
       }),
     [
       renderDoc, showStems, showFingerings, previewWidth, barsPerLine,
       title, subtitle, feel, headerGap, titleSize, subtitleSize, feelSize, keySize, showKey,
-      chordFontSize,
+      chordFontSize, capo,
     ],
   );
 
@@ -143,7 +145,7 @@ export function TabWorkbench() {
     const player = await createTabPlayer(doc, bpm, {
       onCursor: (i) => setCursorIndex(i),
       onEnd: () => stop(),
-    });
+    }, capo);
     if (gen !== playGenRef.current) {
       // a Stop (or another Play) happened during the async load — discard this player
       player.stop();
@@ -241,6 +243,16 @@ export function TabWorkbench() {
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </Select>
+              </Label>
+              <Label>
+                <span>Capo</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={12}
+                  value={capo}
+                  onChange={(e) => setCapo(clampSize(e.target.value, 0, 12, 0))}
+                />
               </Label>
             </div>
             <div className="toggles flex flex-wrap gap-2 items-center pt-2 border-t">
