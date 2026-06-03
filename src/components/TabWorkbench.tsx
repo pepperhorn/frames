@@ -25,6 +25,9 @@ const MAJOR_KEYS = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", 
 const MINOR_KEYS = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "Bbm", "Fm", "Cm", "Gm", "Dm"];
 const TIME_SIGS = ["4/4", "3/4", "2/4", "6/8", "12/8"];
 const BARS_PER_LINE = [1, 2, 3, 4, 5, 6, 8];
+const FRAME_SIZES = ["sm", "md", "lg", "xl", "2xl"] as const;
+type FrameSize = (typeof FRAME_SIZES)[number];
+const FRAME_CELL: Record<FrameSize, number> = { sm: 6, md: 8, lg: 10, xl: 12, "2xl": 14 };
 
 const SAMPLE = `q:0/3 e:0/2 0/1 q:1/2 | h:2/3 q:r q:3/4
 e:0/1 0/2 (h) q:2/2 q:3/2`;
@@ -36,6 +39,7 @@ export function TabWorkbench() {
   const [keySig, setKeySig] = useState("C");
   const [timeSigStr, setTimeSigStr] = useState("4/4");
   const [bpm, setBpm] = useState(96);
+  const [capo, setCapo] = useState(0);
   const [barsPerLine, setBarsPerLine] = useState(4);
   const [showStems, setShowStems] = useState(true);
   const [showFingerings, setShowFingerings] = useState(false);
@@ -53,7 +57,9 @@ export function TabWorkbench() {
   const [showKey, setShowKey] = useState(true);
   const [chordFontFamily, setChordFontFamily] = useState("Poppins, sans-serif");
   const [chordFontSize, setChordFontSize] = useState(13);
+  const [frameSize, setFrameSize] = useState<FrameSize>("md");
   const [showLookFeel, setShowLookFeel] = useState(false);
+  const frameCell = FRAME_CELL[frameSize];
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -116,11 +122,13 @@ export function TabWorkbench() {
         keySize,
         showKey,
         chordFontSize,
+        chordFrameCell: frameCell,
+        capo,
       }),
     [
       renderDoc, showStems, showFingerings, previewWidth, barsPerLine,
       title, subtitle, feel, headerGap, titleSize, subtitleSize, feelSize, keySize, showKey,
-      chordFontSize,
+      chordFontSize, frameCell, capo,
     ],
   );
 
@@ -143,7 +151,7 @@ export function TabWorkbench() {
     const player = await createTabPlayer(doc, bpm, {
       onCursor: (i) => setCursorIndex(i),
       onEnd: () => stop(),
-    });
+    }, capo);
     if (gen !== playGenRef.current) {
       // a Stop (or another Play) happened during the async load — discard this player
       player.stop();
@@ -241,6 +249,16 @@ export function TabWorkbench() {
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </Select>
+              </Label>
+              <Label>
+                <span>Capo</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={12}
+                  value={capo}
+                  onChange={(e) => setCapo(clampSize(e.target.value, 0, 12, 0))}
+                />
               </Label>
             </div>
             <div className="toggles flex flex-wrap gap-2 items-center pt-2 border-t">
@@ -365,7 +383,7 @@ export function TabWorkbench() {
                     onChange={(e) => setHeaderGap(clampSize(e.target.value, 0, 40, 5))} />
                 </Label>
               </div>
-              <div className="lf-key-toggle flex flex-wrap gap-2 items-center pt-2 border-t">
+              <div className="lf-key-toggle flex flex-wrap gap-3 items-center pt-2 border-t">
                 <Button
                   variant={showKey ? "default" : "outline"}
                   size="sm"
@@ -373,6 +391,19 @@ export function TabWorkbench() {
                 >
                   Show key: {showKey ? "on" : "off"}
                 </Button>
+                <div className="frame-size-radio flex items-center gap-2">
+                  <span className="text-sm font-medium">Frame size</span>
+                  {FRAME_SIZES.map((s) => (
+                    <Button
+                      key={s}
+                      variant={frameSize === s ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFrameSize(s)}
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </CardContent>
           )}
@@ -413,6 +444,7 @@ export function TabWorkbench() {
                   fingerFontSize={fingerFontSize}
                   chordFontSize={chordFontSize}
                   chordFontFamily={chordFontFamily}
+                  chordFrameCell={frameCell}
                 />
               </div>
             </div>

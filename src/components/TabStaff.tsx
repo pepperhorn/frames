@@ -12,6 +12,7 @@ interface TabStaffProps {
   fingerFontSize?: number;
   chordFontSize?: number;
   chordFontFamily?: string;
+  chordFrameCell?: number;
   className?: string;
 }
 
@@ -27,6 +28,7 @@ export function TabStaff({
   fingerFontSize = 10,
   chordFontSize = 13,
   chordFontFamily,
+  chordFrameCell = 8,
   className,
 }: TabStaffProps) {
   const chordFont = chordFontFamily || fontFamily;
@@ -74,6 +76,7 @@ export function TabStaff({
           fingerFontSize={fingerFontSize}
           chordFontSize={chordFontSize}
           chordFont={chordFont}
+          chordFrameCell={chordFrameCell}
         />
       ))}
     </svg>
@@ -92,6 +95,7 @@ function SystemView({
   fingerFontSize,
   chordFontSize,
   chordFont,
+  chordFrameCell,
 }: {
   sys: TabSystem;
   layout: TabLayout;
@@ -104,6 +108,7 @@ function SystemView({
   fingerFontSize: number;
   chordFontSize: number;
   chordFont: string;
+  chordFrameCell: number;
 }) {
   const beamY = stemBaseY + LAYOUT.STEM_LEN;
   return (
@@ -192,7 +197,7 @@ function SystemView({
 
       {/* Chord symbols + mini frames in the row above the staff */}
       {layout.chordRowH > 0 &&
-        drawChordRow(sys, layout, color, chordFont, chordFontSize)}
+        drawChordRow(sys, layout, color, chordFont, chordFontSize, chordFrameCell)}
     </g>
   );
 }
@@ -239,17 +244,20 @@ function drawChordRow(
   color: string,
   font: string,
   fontSize: number,
+  frameCell: number,
 ) {
   const out: ReactElement[] = [];
   const topLineY = sys.lineYs[0];
   const rowTop = topLineY - layout.chordRowH;
-  const labelY = topLineY - fontSize / 2 - 5; // just above the staff, consistent row
+  // Symbol band sits on top of the chord row; the frame band is below it.
+  const labelY = rowTop + layout.chordSymbolH / 2;
+  const frameTop = rowTop + layout.chordSymbolH + 4;
   for (const beat of sys.beats) {
     const chord = beat.chord;
     if (!chord) continue;
     if (chord.frame) {
       out.push(
-        ...drawChordFrame(chord.frame.frets, beat.x, rowTop + 2, layout.stringCount, color),
+        ...drawChordFrame(chord.frame.frets, beat.x, frameTop, layout.stringCount, color, frameCell),
       );
     }
     if (chord.label) {
@@ -280,8 +288,8 @@ function drawChordFrame(
   top: number,
   stringCount: number,
   color: string,
+  cell: number,
 ) {
-  const cell = LAYOUT.CHORD_CELL;
   const gridW = (stringCount - 1) * cell;
   const left = cx - gridW / 2;
   const rows = 4;
@@ -322,7 +330,31 @@ function drawChordFrame(
       </text>,
     );
   }
-  // per-string dots / open / muted markers
+  const r = cell * 0.38;
+  // Barre detection: the lowest fretted fret, when it lands on >=2 strings, is the
+  // index-finger barre. Draw one bar across its span; higher notes sit on top as dots.
+  const barred = new Set<number>();
+  const fretted = frets.map((f, i) => ({ f, i })).filter((o) => o.f > 0);
+  const minFret = fretted.length ? Math.min(...fretted.map((o) => o.f)) : 0;
+  const barreIdxs = fretted.filter((o) => o.f === minFret).map((o) => o.i);
+  if (minFret > 0 && barreIdxs.length >= 2) {
+    const lo = Math.min(...barreIdxs);
+    const hi = Math.max(...barreIdxs);
+    const y = nutY + (minFret - baseFret + 0.5) * cell;
+    out.push(
+      <rect
+        key={`cbar-${minFret}`}
+        x={left + lo * cell - r}
+        y={y - r}
+        width={(hi - lo) * cell + 2 * r}
+        height={2 * r}
+        rx={r}
+        fill={color}
+      />,
+    );
+    barreIdxs.forEach((i) => barred.add(i));
+  }
+  // per-string dots / open / muted markers (skip strings covered by a barre)
   frets.forEach((f, i) => {
     const x = left + i * cell;
     if (f === -1) {
@@ -335,9 +367,9 @@ function drawChordFrame(
       out.push(
         <circle key={`co-${i}`} cx={x} cy={markerY} r={2.2} fill="none" stroke={color} strokeWidth={0.8} />,
       );
-    } else {
+    } else if (!barred.has(i)) {
       out.push(
-        <circle key={`cd-${i}`} cx={x} cy={nutY + (f - baseFret + 0.5) * cell} r={cell * 0.38} fill={color} />,
+        <circle key={`cd-${i}`} cx={x} cy={nutY + (f - baseFret + 0.5) * cell} r={r} fill={color} />,
       );
     }
   });

@@ -16,6 +16,7 @@ import {
   type InstrumentId,
 } from "@/lib/instruments";
 import { BASS_PRESETS, GUITAR_TOP3_PRESETS, type StaticPreset } from "@/lib/staticPresets";
+import { chordToFretCode, fretCodeToChord } from "@/lib/tab/chordCode";
 import {
   downloadPngFromContainer,
   downloadSvgFromContainer,
@@ -237,6 +238,32 @@ export function ChordWorkbench() {
 
   const stringRows = Array.from({ length: inst.strings }, (_, i) => i + 1);
 
+  const currentCode = useMemo(() => chordToFretCode(chord, inst.strings), [chord, inst.strings]);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeErr, setCodeErr] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showJson, setShowJson] = useState(false);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(currentCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  const loadCode = () => {
+    const next = fretCodeToChord(codeInput, inst.strings, chord.title || undefined);
+    if (next) {
+      setChord(next);
+      setCodeErr(false);
+    } else {
+      setCodeErr(true);
+    }
+  };
+
   const previewRef = useRef<HTMLDivElement | null>(null);
 
   const filename = (ext: string) =>
@@ -312,11 +339,38 @@ export function ChordWorkbench() {
                 ))}
               </Select>
             </Label>
-            <p className="preset-hint mt-2 text-xs text-muted-foreground">
-              {inst.presetSource === "chords-db"
-                ? "Source: @tombatossals/chords-db"
-                : "Curated beginner voicings"}
-            </p>
+            <div className="load-code mt-3 flex items-end gap-2">
+              <Label className="load-code-label flex-1">
+                <span>…or load from a chord code</span>
+                <Input
+                  className="load-code-input"
+                  value={codeInput}
+                  placeholder="e.g. x02210"
+                  onChange={(e) => {
+                    setCodeInput(e.target.value);
+                    setCodeErr(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") loadCode();
+                  }}
+                />
+              </Label>
+              <Button size="sm" variant="outline" className="load-code-btn" onClick={loadCode}>
+                Load
+              </Button>
+            </div>
+            {codeErr ? (
+              <p className="load-code-err mt-1 text-xs text-red-600">
+                Need {inst.strings} frets low→high (x = muted), e.g.{" "}
+                <code>{"x".repeat(Math.max(0, inst.strings - 5))}02210</code>.
+              </p>
+            ) : (
+              <p className="preset-hint mt-2 text-xs text-muted-foreground">
+                {inst.presetSource === "chords-db"
+                  ? "Source: @tombatossals/chords-db"
+                  : "Curated beginner voicings"}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -469,9 +523,18 @@ export function ChordWorkbench() {
         </Card>
 
         <Card className="settings-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Diagram Settings</CardTitle>
-          </CardHeader>
+          <button
+            type="button"
+            className="settings-toggle w-full"
+            onClick={() => setShowSettings((v) => !v)}
+            aria-expanded={showSettings}
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-lg">Diagram Settings</CardTitle>
+              <span className="text-muted-foreground text-sm">{showSettings ? "▲" : "▼"}</span>
+            </CardHeader>
+          </button>
+          {showSettings && (
           <CardContent className="grid grid-cols-2 gap-3">
             <Label>
               <span>Orientation</span>
@@ -630,6 +693,7 @@ export function ChordWorkbench() {
               </Select>
             </Label>
           </CardContent>
+          )}
         </Card>
 
         <TextStyleControls
@@ -637,6 +701,7 @@ export function ChordWorkbench() {
           setSettings={(updater) => setSettings(updater(settings))}
           textStyle={textStyle}
           setTextStyle={setTextStyle}
+          collapsible
         />
       </div>
 
@@ -662,17 +727,40 @@ export function ChordWorkbench() {
                 className="preview-chart flex justify-center"
               />
             </div>
+            <div className="chord-code-row mt-3 flex items-center justify-center gap-2 text-sm">
+              <span className="text-muted-foreground">code</span>
+              <code className="chord-code rounded bg-muted/60 px-2 py-1 font-mono">{currentCode}</code>
+              <Button
+                size="sm"
+                variant="outline"
+                className="copy-code-btn"
+                onClick={copyCode}
+                title="Copy chord code to clipboard"
+              >
+                {copied ? "Copied!" : "⧉ Copy"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
         <Card className="json-card">
-          <CardHeader>
-            <CardTitle className="text-sm">Chord JSON</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="chord-json text-xs overflow-x-auto bg-muted/40 rounded p-3">
-              {JSON.stringify(chord, null, 2)}
-            </pre>
-          </CardContent>
+          <button
+            type="button"
+            className="json-toggle w-full"
+            onClick={() => setShowJson((v) => !v)}
+            aria-expanded={showJson}
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-sm">Chord JSON</CardTitle>
+              <span className="text-muted-foreground text-sm">{showJson ? "▲" : "▼"}</span>
+            </CardHeader>
+          </button>
+          {showJson && (
+            <CardContent>
+              <pre className="chord-json text-xs overflow-x-auto bg-muted/40 rounded p-3">
+                {JSON.stringify(chord, null, 2)}
+              </pre>
+            </CardContent>
+          )}
         </Card>
       </div>
     </div>

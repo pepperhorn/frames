@@ -36,6 +36,8 @@ interface Props {
   setSettings: (updater: (s: ChordSettings) => ChordSettings) => void;
   textStyle: TextStyle;
   setTextStyle: (next: TextStyle) => void;
+  /** When true, render a collapsible card that starts closed. */
+  collapsible?: boolean;
 }
 
 function RoleRow({
@@ -78,7 +80,14 @@ function RoleRow({
   );
 }
 
-export function TextStyleControls({ settings, setSettings, textStyle, setTextStyle }: Props) {
+export function TextStyleControls({
+  settings,
+  setSettings,
+  textStyle,
+  setTextStyle,
+  collapsible = false,
+}: Props) {
+  const [open, setOpen] = useState(!collapsible);
   const dotShadow = textStyle.dot?.shadow ?? null;
   const updateShadow = (patch: Partial<TextShadow>) => {
     setTextStyle({
@@ -158,9 +167,24 @@ export function TextStyleControls({ settings, setSettings, textStyle, setTextSty
 
   return (
     <Card className="text-style-card">
-      <CardHeader>
-        <CardTitle className="text-lg">Text Style</CardTitle>
-      </CardHeader>
+      {collapsible ? (
+        <button
+          type="button"
+          className="text-style-toggle w-full"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-lg">Text Style</CardTitle>
+            <span className="text-muted-foreground text-sm">{open ? "▲" : "▼"}</span>
+          </CardHeader>
+        </button>
+      ) : (
+        <CardHeader>
+          <CardTitle className="text-lg">Text Style</CardTitle>
+        </CardHeader>
+      )}
+      {(!collapsible || open) && (
       <CardContent className="flex flex-col gap-4">
         <div className="role-table flex flex-col gap-2">
           <div className="role-header grid grid-cols-[100px_1fr_1fr] gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -331,6 +355,7 @@ export function TextStyleControls({ settings, setSettings, textStyle, setTextSty
           </div>
         </div>
       </CardContent>
+      )}
     </Card>
   );
 }

@@ -12,8 +12,9 @@ export interface ScheduledBeat {
   globalBeatIndex: number;
 }
 
-/** Pure timing math — unit tested. quarter = 60/bpm seconds. */
-export function buildSchedule(doc: TabDoc, bpm: number): ScheduledBeat[] {
+/** Pure timing math — unit tested. quarter = 60/bpm seconds.
+ *  `capo` raises every sounding pitch by that many semitones (frets stay as written). */
+export function buildSchedule(doc: TabDoc, bpm: number, capo = 0): ScheduledBeat[] {
   const quarterSec = 60 / bpm;
   const sched: ScheduledBeat[] = [];
   let t = 0;
@@ -24,7 +25,7 @@ export function buildSchedule(doc: TabDoc, bpm: number): ScheduledBeat[] {
       const durSec = beatFraction(beat.duration, beat.dotted) * 4 * quarterSec;
       const midis = beat.isRest
         ? []
-        : beat.notes.map((n) => noteToMidi(doc.instrument, n));
+        : beat.notes.map((n) => noteToMidi(doc.instrument, n) + capo);
       sched.push({ atSec: t, durSec, midis, globalBeatIndex: globalBeatIndex++ });
       t += durSec;
     }
@@ -45,6 +46,7 @@ export async function createTabPlayer(
   doc: TabDoc,
   bpm: number,
   callbacks: { onCursor: (globalBeatIndex: number) => void; onEnd: () => void },
+  capo = 0,
 ): Promise<TabPlayerHandle> {
   const context = new AudioContext();
   await context.resume();
@@ -53,7 +55,7 @@ export async function createTabPlayer(
   const instrument = Soundfont(context, { instrument: patch });
   await instrument.load;
 
-  const sched = buildSchedule(doc, bpm);
+  const sched = buildSchedule(doc, bpm, capo);
   const start = context.currentTime + 0.1;
   let stopped = false;
   const timers: ReturnType<typeof setTimeout>[] = [];
