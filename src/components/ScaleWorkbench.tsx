@@ -26,10 +26,12 @@ import {
   type ScaleName,
 } from "@/lib/scales";
 import {
+  downloadPdfFromContainer,
   downloadPngFromContainer,
   downloadSvgFromContainer,
   safeFilename,
 } from "@/lib/scaleExport";
+import type { Captions } from "@/lib/render/captions";
 
 const SCALE_KEYS = Object.keys(SCALES) as ScaleName[];
 const SHAPES: DotShape[] = ["circle", "square", "triangle"];
@@ -145,6 +147,20 @@ export function ScaleWorkbench() {
     [frame, instrumentId, key],
   );
 
+  // Optional centered captions composited onto the diagram.
+  const [subtitle, setSubtitle] = useState("");
+  const [subtitleSize, setSubtitleSize] = useState(22);
+  const [subtitleColor, setSubtitleColor] = useState("#0a0a0a");
+  const [footer, setFooter] = useState("");
+  const [footerSize, setFooterSize] = useState(16);
+  const [footerColor, setFooterColor] = useState("#52525b");
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const captions = useMemo<Captions>(
+    () => ({ subtitle, subtitleSize, subtitleColor, footer, footerSize, footerColor }),
+    [subtitle, subtitleSize, subtitleColor, footer, footerSize, footerColor],
+  );
+
   const previewRef = useRef<HTMLDivElement | null>(null);
   const filename = (ext: string) =>
     safeFilename([frame.title || `${key}_${scale}`, inst.label], ext);
@@ -153,6 +169,14 @@ export function ScaleWorkbench() {
     downloadPngFromContainer(previewRef.current, filename("png"), {
       backgroundColor: settings.backgroundColor,
     });
+  const downloadPdf = async () => {
+    setExportError(null);
+    try {
+      await downloadPdfFromContainer(previewRef.current, filename("pdf"));
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "PDF export failed");
+    }
+  };
 
   return (
     <div className="scale-workbench grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
@@ -626,6 +650,65 @@ export function ScaleWorkbench() {
                 ))}
               </Select>
             </Label>
+
+            <div className="caption-fields col-span-2 grid grid-cols-[1fr_70px_56px] gap-2 items-end border-t pt-3">
+              <Label className="subtitle-label">
+                <span>Subtitle</span>
+                <Input
+                  className="subtitle-input"
+                  value={subtitle}
+                  placeholder="e.g. position 1"
+                  onChange={(e) => setSubtitle(e.target.value)}
+                />
+              </Label>
+              <Label className="subtitle-size-label">
+                <span>Size</span>
+                <Input
+                  type="number"
+                  min={8}
+                  max={72}
+                  value={subtitleSize}
+                  onChange={(e) => setSubtitleSize(Number(e.target.value) || 22)}
+                />
+              </Label>
+              <Label className="subtitle-color-label">
+                <span>Color</span>
+                <Input
+                  type="color"
+                  className="h-9 p-1"
+                  value={subtitleColor}
+                  onChange={(e) => setSubtitleColor(e.target.value)}
+                />
+              </Label>
+              <Label className="footer-label">
+                <span>Footer</span>
+                <Input
+                  className="footer-input"
+                  value={footer}
+                  placeholder="e.g. from My Songbook"
+                  onChange={(e) => setFooter(e.target.value)}
+                />
+              </Label>
+              <Label className="footer-size-label">
+                <span>Size</span>
+                <Input
+                  type="number"
+                  min={8}
+                  max={48}
+                  value={footerSize}
+                  onChange={(e) => setFooterSize(Number(e.target.value) || 16)}
+                />
+              </Label>
+              <Label className="footer-color-label">
+                <span>Color</span>
+                <Input
+                  type="color"
+                  className="h-9 p-1"
+                  value={footerColor}
+                  onChange={(e) => setFooterColor(e.target.value)}
+                />
+              </Label>
+            </div>
           </CardContent>
         </Card>
 
@@ -639,7 +722,7 @@ export function ScaleWorkbench() {
 
       <div className="workbench-preview lg:sticky lg:top-6 self-start flex flex-col gap-4">
         <Card className="preview-card">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-lg">Preview</CardTitle>
             <div className="download-buttons flex gap-2">
               <Button size="sm" variant="outline" onClick={downloadSvg} className="download-svg-btn">
@@ -648,7 +731,13 @@ export function ScaleWorkbench() {
               <Button size="sm" variant="outline" onClick={downloadPng} className="download-png-btn">
                 PNG
               </Button>
+              <Button size="sm" variant="outline" onClick={downloadPdf} className="download-pdf-btn">
+                PDF
+              </Button>
             </div>
+            {exportError && (
+              <div className="export-error w-full text-xs text-red-600">{exportError}</div>
+            )}
           </CardHeader>
           <CardContent>
             <div ref={previewRef} className="preview-svg-wrap">
@@ -656,6 +745,7 @@ export function ScaleWorkbench() {
                 chord={chord}
                 settings={{ ...settings, frets: frame.fretSpan }}
                 textStyle={textStyle}
+                captions={captions}
                 className="preview-chart flex justify-center"
               />
             </div>

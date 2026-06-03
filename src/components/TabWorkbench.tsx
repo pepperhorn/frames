@@ -64,6 +64,7 @@ export function TabWorkbench() {
   const [showLookFeel, setShowLookFeel] = useState(false);
   const [showTabJson, setShowTabJson] = useState(false);
   const [jsonCopied, setJsonCopied] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const frameCell = FRAME_CELL[frameSize];
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -198,7 +199,15 @@ export function TabWorkbench() {
   const downloadSvg = () => downloadSvgFromContainer(previewRef.current, filename("svg"));
   const downloadPng = () =>
     downloadPngFromContainer(previewRef.current, filename("png"), { backgroundColor: "#ffffff" });
-  const downloadPdf = () => downloadPdfFromContainer(previewRef.current, filename("pdf"));
+  const downloadPdf = async () => {
+    setExportError(null);
+    try {
+      await downloadPdfFromContainer(previewRef.current, filename("pdf"));
+    } catch (e) {
+      // Surface failures instead of dying as a silent unhandled rejection.
+      setExportError(e instanceof Error ? e.message : "PDF export failed");
+    }
+  };
 
   // Structured JSON of the current tab: parsed content + playback/layout meta +
   // the full style settings (kept even if some are reworked later).
@@ -506,7 +515,7 @@ export function TabWorkbench() {
         </Card>
 
         <Card className="preview-card">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-lg">Preview</CardTitle>
             <div className="preview-actions flex gap-2">
               {playing ? (
@@ -528,6 +537,9 @@ export function TabWorkbench() {
                 PDF
               </Button>
             </div>
+            {exportError && (
+              <div className="export-error w-full text-xs text-red-600">{exportError}</div>
+            )}
           </CardHeader>
           <CardContent>
             <div ref={measureRef} className="preview-measure w-full">

@@ -2,12 +2,14 @@ import { SVGuitarChord, type Chord, type ChordSettings } from "svguitar";
 import type { TextStyle } from "@/components/FretboardChart";
 import { frameToChord } from "./scaleToChord";
 import { postProcessSvg } from "./postProcess";
+import { addCaptions, type Captions } from "./captions";
 import type { FrameSpec } from "./types";
 
 export interface RenderArgs {
   chord: Chord;
   settings?: ChordSettings;
   textStyle?: TextStyle;
+  captions?: Captions;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface RenderArgs {
  */
 export function renderChordInto(
   el: HTMLElement,
-  { chord, settings, textStyle }: RenderArgs,
+  { chord, settings, textStyle, captions }: RenderArgs,
 ): SVGSVGElement | null {
   el.innerHTML = "";
   const chart = new SVGuitarChord(el);
@@ -33,7 +35,10 @@ export function renderChordInto(
     .draw();
 
   const svg = el.querySelector("svg") as SVGSVGElement | null;
-  if (svg) postProcessSvg(svg, { settings, textStyle });
+  if (svg) {
+    postProcessSvg(svg, { settings, textStyle });
+    if (captions) addCaptions(svg, captions, settings?.fontFamily ?? "Poppins, sans-serif");
+  }
   return svg;
 }
 

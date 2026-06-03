@@ -48,6 +48,56 @@ export function downloadSvgFromContainer(container: HTMLElement | null, filename
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Render the diagram SVG inside `container` into a single-page PDF, scaled to
+ * fit the page (defaults to A4, auto orientation). Uses jspdf + svg2pdf.js's
+ * named `svg2pdf(el, pdf, opts)` call, loaded on demand. Dimensions come from
+ * the viewBox so composited captions (which grow the viewBox) are included.
+ */
+export async function downloadPdfFromContainer(
+  container: HTMLElement | null,
+  filename: string,
+  options: {
+    format?: string | [number, number];
+    orientation?: "portrait" | "landscape";
+    margin?: number;
+  } = {},
+) {
+  const svg = container?.querySelector("svg");
+  if (!svg) return;
+  const vb = svg.getAttribute("viewBox")?.split(/[\s,]+/).map(Number);
+  const w = vb && vb.length === 4 ? vb[2] : svg.getBoundingClientRect().width;
+  const h = vb && vb.length === 4 ? vb[3] : svg.getBoundingClientRect().height;
+  if (!w || !h) return;
+
+  const { jsPDF } = await import("jspdf");
+  const { svg2pdf } = await import("svg2pdf.js");
+  const { registerPdfFonts, familiesInSvg } = await import("./render/pdfFonts");
+
+  const orientation = options.orientation ?? (w > h ? "landscape" : "portrait");
+  const format = options.format ?? "a4";
+  const pdf = new jsPDF({ orientation, unit: "pt", format });
+
+  // Embed the TTFs referenced by the SVG so svg2pdf renders real fonts instead
+  // of falling back to Helvetica.
+  await registerPdfFonts(pdf, familiesInSvg(svg));
+  const margin = options.margin ?? 36;
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  // Fit within both page dimensions; never upscale past 1:1.
+  const scale = Math.min((pageW - margin * 2) / w, (pageH - margin * 2) / h, 1);
+  const drawW = w * scale;
+  const drawH = h * scale;
+  const x = (pageW - drawW) / 2; // center horizontally
+  const y = margin;
+
+  await svg2pdf(svg as SVGElement, pdf, { x, y, width: drawW, height: drawH });
+
+  const url = URL.createObjectURL(pdf.output("blob"));
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+}
+
 export function downloadPngFromContainer(
   container: HTMLElement | null,
   filename: string,
