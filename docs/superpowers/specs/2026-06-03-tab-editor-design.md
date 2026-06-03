@@ -37,8 +37,9 @@ future enhancement, not part of v1.
   built to allow it later as an alternate view.
 - Chord-name changes printed above the staff. Vertical headroom is reserved for
   them, but they are not parsed or rendered in v1.
-- Per-instrument playback patches. v1 uses one patch (`electric_guitar_jazz`);
-  tuning still drives correct pitch for every instrument.
+- Patches for ukulele. v1 maps patches for guitar and bass (see Playback);
+  ukulele falls back to `electric_guitar_jazz`. Tuning drives correct pitch
+  regardless.
 - Faithful synthesis of techniques (hammer/pull/bend/tap play as plain notes).
 - Auto-bar strictness/validation UI (over/under-full measures are drawn as-is).
 
@@ -180,16 +181,20 @@ Uses Poppins and the existing color handling for visual consistency.
 ## Playback (`smplr`)
 
 - **`lib/tab/pitch.ts`**: open-string MIDI per instrument (guitar
-  `E2 A2 D3 G3 B3 E4`, bass `E1 A1 D2 G2`, ukulele `G4 C4 E4 A4`); `string + fret
-  → MIDI → frequency`.
+  `E2 A2 D3 G3 B3 E4`, 4-string bass `E1 A1 D2 G2`, 5-string bass adds low
+  `B0` → `B0 E1 A1 D2 G2`, ukulele `G4 C4 E4 A4`); `string + fret → MIDI →
+  frequency`.
 - **`lib/tab/playback.ts`**: `buildSchedule(doc, bpm)` → ordered
   `{ atSec, durSec, midis[] }`. Quarter = `60/bpm` seconds, scaled by duration,
   ×2/3 for triplets, ×1.5 for dotted. Pure math → unit-tested.
-- A thin player wraps `smplr`'s `Soundfont` instrument loading MusyngKite
-  `electric_guitar_jazz`. It starts the AudioContext on the Play click, schedules
-  each beat's notes (chords fire together, rests advance silently), and drives a
-  **cursor highlight** over the current beat via `requestAnimationFrame` against
-  elapsed time. Techniques play as plain notes in v1.
+- A thin player wraps `smplr`'s `Soundfont` instrument. The patch is chosen by
+  instrument: guitar / guitar-top3 → MusyngKite `electric_guitar_jazz`, bass (4
+  or 5 string) → MusyngKite `electric_bass_finger`, ukulele →
+  `electric_guitar_jazz` (fallback). It starts the AudioContext on the Play
+  click, schedules each beat's notes (chords fire together, rests advance
+  silently), and drives a **cursor highlight** over the current beat via
+  `requestAnimationFrame` against elapsed time. Techniques play as plain notes in
+  v1.
 
 ## Files & integration
 
@@ -206,10 +211,16 @@ src/components/Workbench.tsx    # add 3rd mode "tab"
 ```
 
 `TabWorkbench` owns state (raw text, instrument, key, time signature, bpm,
-toggles), re-parses on each keystroke, shows `doc.errors` on the inline error
-line, and keeps the last good layout in the preview. Structure mirrors
-`ScaleWorkbench`. `Workbench.tsx`'s `Mode` union gains `"tab"` and a third toggle
-button.
+toggles, and — when bass is selected — a 4/5-string choice), re-parses on each
+keystroke, shows `doc.errors` on the inline error line, and keeps the last good
+layout in the preview. Structure mirrors `ScaleWorkbench`. `Workbench.tsx`'s
+`Mode` union gains `"tab"` and a third toggle button.
+
+Bass string count is a dropdown shown only when bass is the instrument; 4 →
+`E A D G`, 5 → adds a low `B` (`B E A D G`). Tuning and string count flow into
+both the staff (number of lines, tuning letters) and `pitch.ts`. This lives as a
+`bass-5` tuning in the tab layer rather than altering the shared `INSTRUMENTS`
+map, so the Chord/Scale tabs are untouched.
 
 New dependency: `smplr`.
 
@@ -229,6 +240,6 @@ Visual correctness is verified by eye on the dev server.
 
 - Standard-notation alternate view over the same `TabDoc`.
 - Chord-name changes above the staff.
-- Per-instrument playback patches.
+- A dedicated ukulele patch (uses the guitar patch in v1).
 - Technique-aware synthesis (real hammer/pull/bend/tap), slur arcs.
 - Optional auto-bar validation/warnings for over/under-full measures.
