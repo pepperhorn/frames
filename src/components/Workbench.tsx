@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { ChordWorkbench } from "./ChordWorkbench";
 import { ScaleWorkbench } from "./ScaleWorkbench";
+import { TabWorkbench } from "./TabWorkbench";
 import { Button } from "./ui/button";
 
-type Mode = "chord" | "scale";
+type Mode = "chord" | "scale" | "tab";
 
 export function Workbench() {
   const [mode, setMode] = useState<Mode>("chord");
@@ -13,22 +14,19 @@ export function Workbench() {
         <span className="mode-label text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Mode
         </span>
-        <Button
-          variant={mode === "chord" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setMode("chord")}
-        >
+        <Button variant={mode === "chord" ? "default" : "outline"} size="sm" onClick={() => setMode("chord")}>
           Chord
         </Button>
-        <Button
-          variant={mode === "scale" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setMode("scale")}
-        >
+        <Button variant={mode === "scale" ? "default" : "outline"} size="sm" onClick={() => setMode("scale")}>
           Scale
         </Button>
+        <Button variant={mode === "tab" ? "default" : "outline"} size="sm" onClick={() => setMode("tab")}>
+          Tab
+        </Button>
       </div>
-      {mode === "chord" ? <ChordWorkbench /> : <ScaleWorkbench />}
+      {mode === "chord" && <ChordWorkbench />}
+      {mode === "scale" && <ScaleWorkbench />}
+      {mode === "tab" && <TabWorkbench />}
     </div>
   );
 }
