@@ -33,13 +33,13 @@ const TECHNIQUE_TOKENS: Record<string, Technique> = {
 
 const EPS = 1e-9;
 
-/** A whitespace token inside [..] is a fret-code if it's all digits/x (compact,
- *  one char per string) or dash-separated fret numbers (for frets above 9). */
-function isFretCode(s: string): boolean {
+/** A token is a fret-code if it's all digits/x (compact, one char per string)
+ *  or dash-separated fret numbers (for frets above 9). */
+export function isFretCode(s: string): boolean {
   return /^[0-9xX]{2,}$/.test(s) || /^([0-9]+|[xX])(-([0-9]+|[xX]))+$/.test(s);
 }
 
-function parseFretCode(code: string, stringCount: number): number[] | null {
+export function parseFretCode(code: string, stringCount: number): number[] | null {
   const segs = code.includes("-") ? code.split("-") : code.split("");
   const frets = segs.map((c) => (c === "x" || c === "X" ? -1 : Number(c)));
   if (frets.some((f) => !Number.isInteger(f) || f < -1)) return null;
