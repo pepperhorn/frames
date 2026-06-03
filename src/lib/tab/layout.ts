@@ -4,7 +4,7 @@ import type { Beat, Duration, Measure, TabDoc, Technique, TimeSig } from "./type
 
 export const LAYOUT = {
   LINE_GAP: 14,
-  LEFT_PAD: 48,
+  LEFT_PAD: 60,
   RIGHT_PAD: 16,
   TOP_PAD: 32,
   STEM_LEN: 20,

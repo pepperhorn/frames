@@ -81,11 +81,11 @@ function SystemView({
         />
       ))}
 
-      {/* Tuning letters (clef substitute) */}
+      {/* Tuning letters (clef substitute), to the right of the time signature */}
       {layout.tuning.map((t, i) => (
         <text
           key={`tuning-${i}`}
-          x={10}
+          x={40}
           y={sys.lineYs[i]}
           fontSize={TUNING_FONT_SIZE}
           fontFamily={fontFamily}
@@ -98,15 +98,15 @@ function SystemView({
         </text>
       ))}
 
-      {/* Time signature on the first system */}
+      {/* Time signature on the first system, far left of the string names */}
       {showTimeSig && (
         <g className="tab-timesig">
-          <text x={30} y={sys.lineYs[Math.floor(layout.stringCount / 2) - 1] ?? sys.lineYs[0]}
-            fontSize={16} fontWeight={700} fill={color} textAnchor="middle" dominantBaseline="central">
+          <text x={14} y={(sys.lineYs[0] + sys.lineYs[layout.stringCount - 1]) / 2 - 16}
+            fontSize={32} fontWeight={700} fill={color} textAnchor="middle" dominantBaseline="central">
             {layout.timeSig.num}
           </text>
-          <text x={30} y={sys.lineYs[Math.ceil(layout.stringCount / 2)] ?? sys.lineYs[1]}
-            fontSize={16} fontWeight={700} fill={color} textAnchor="middle" dominantBaseline="central">
+          <text x={14} y={(sys.lineYs[0] + sys.lineYs[layout.stringCount - 1]) / 2 + 16}
+            fontSize={32} fontWeight={700} fill={color} textAnchor="middle" dominantBaseline="central">
             {layout.timeSig.den}
           </text>
         </g>
