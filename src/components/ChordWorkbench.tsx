@@ -242,6 +242,8 @@ export function ChordWorkbench() {
   const [codeInput, setCodeInput] = useState("");
   const [codeErr, setCodeErr] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showJson, setShowJson] = useState(false);
 
   const copyCode = async () => {
     try {
@@ -521,9 +523,18 @@ export function ChordWorkbench() {
         </Card>
 
         <Card className="settings-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Diagram Settings</CardTitle>
-          </CardHeader>
+          <button
+            type="button"
+            className="settings-toggle w-full"
+            onClick={() => setShowSettings((v) => !v)}
+            aria-expanded={showSettings}
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-lg">Diagram Settings</CardTitle>
+              <span className="text-muted-foreground text-sm">{showSettings ? "▲" : "▼"}</span>
+            </CardHeader>
+          </button>
+          {showSettings && (
           <CardContent className="grid grid-cols-2 gap-3">
             <Label>
               <span>Orientation</span>
@@ -682,6 +693,7 @@ export function ChordWorkbench() {
               </Select>
             </Label>
           </CardContent>
+          )}
         </Card>
 
         <TextStyleControls
@@ -689,6 +701,7 @@ export function ChordWorkbench() {
           setSettings={(updater) => setSettings(updater(settings))}
           textStyle={textStyle}
           setTextStyle={setTextStyle}
+          collapsible
         />
       </div>
 
@@ -730,14 +743,24 @@ export function ChordWorkbench() {
           </CardContent>
         </Card>
         <Card className="json-card">
-          <CardHeader>
-            <CardTitle className="text-sm">Chord JSON</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="chord-json text-xs overflow-x-auto bg-muted/40 rounded p-3">
-              {JSON.stringify(chord, null, 2)}
-            </pre>
-          </CardContent>
+          <button
+            type="button"
+            className="json-toggle w-full"
+            onClick={() => setShowJson((v) => !v)}
+            aria-expanded={showJson}
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-sm">Chord JSON</CardTitle>
+              <span className="text-muted-foreground text-sm">{showJson ? "▲" : "▼"}</span>
+            </CardHeader>
+          </button>
+          {showJson && (
+            <CardContent>
+              <pre className="chord-json text-xs overflow-x-auto bg-muted/40 rounded p-3">
+                {JSON.stringify(chord, null, 2)}
+              </pre>
+            </CardContent>
+          )}
         </Card>
       </div>
     </div>
