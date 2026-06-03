@@ -1,5 +1,5 @@
 // src/components/TabWorkbench.tsx
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TabStaff } from "./TabStaff";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -7,10 +7,10 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select } from "./ui/select";
 import { parseTab } from "@/lib/tab/parse";
-import { layoutTab, type TabLayout } from "@/lib/tab/layout";
+import { layoutTab } from "@/lib/tab/layout";
 import { createTabPlayer, type TabPlayerHandle } from "@/lib/tab/playback";
 import { TAB_INSTRUMENTS } from "@/lib/tab/instruments";
-import type { TabInstrument } from "@/lib/tab/types";
+import type { TabDoc, TabInstrument } from "@/lib/tab/types";
 import {
   downloadPngFromContainer,
   downloadSvgFromContainer,
@@ -56,25 +56,30 @@ export function TabWorkbench() {
     [text, instrument, keySig, timeSig],
   );
 
-  // Keep the last layout that had no parse errors so the preview never blanks.
-  const lastGood = useRef<TabLayout | null>(null);
-  const layout = useMemo(() => {
-    const l = layoutTab(doc, {
-      width: 880,
-      tuning: doc.tuning,
-      stringCount: doc.stringCount,
-      timeSig: doc.timeSig,
-      showStems,
-      showFingerings,
-    });
-    if (doc.errors.length === 0) lastGood.current = l;
-    return doc.errors.length === 0 ? l : lastGood.current ?? l;
-  }, [doc, showStems, showFingerings]);
+  // Keep the last DOC that parsed cleanly so the preview never blanks on a typo.
+  // Cache the doc (not the layout) so the toggles still apply while an error stands.
+  const lastGoodDoc = useRef<TabDoc | null>(null);
+  if (doc.errors.length === 0) lastGoodDoc.current = doc;
+  const renderDoc = doc.errors.length === 0 ? doc : lastGoodDoc.current ?? doc;
+  const layout = useMemo(
+    () =>
+      layoutTab(renderDoc, {
+        width: 880,
+        tuning: renderDoc.tuning,
+        stringCount: renderDoc.stringCount,
+        timeSig: renderDoc.timeSig,
+        showStems,
+        showFingerings,
+      }),
+    [renderDoc, showStems, showFingerings],
+  );
 
   const playerRef = useRef<TabPlayerHandle | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const playGenRef = useRef(0);
 
   const stop = () => {
+    playGenRef.current += 1;
     playerRef.current?.stop();
     playerRef.current = null;
     setPlaying(false);
@@ -82,13 +87,27 @@ export function TabWorkbench() {
   };
 
   const play = async () => {
-    stop();
+    stop(); // bumps the generation and clears any current player
+    const gen = playGenRef.current;
     setPlaying(true);
-    playerRef.current = await createTabPlayer(doc, bpm, {
+    const player = await createTabPlayer(doc, bpm, {
       onCursor: (i) => setCursorIndex(i),
       onEnd: () => stop(),
     });
+    if (gen !== playGenRef.current) {
+      // a Stop (or another Play) happened during the async load — discard this player
+      player.stop();
+      return;
+    }
+    playerRef.current = player;
   };
+
+  useEffect(() => {
+    return () => {
+      playerRef.current?.stop();
+      playerRef.current = null;
+    };
+  }, []);
 
   const filename = (ext: string) => safeFilename(["tab", TAB_INSTRUMENTS[instrument].label], ext);
   const downloadSvg = () => downloadSvgFromContainer(previewRef.current, filename("svg"));
