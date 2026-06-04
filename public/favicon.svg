@@ -1,13 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="32" fill="#000000"/>
-  <text
-    x="32"
-    y="34"
-    text-anchor="middle"
-    dominant-baseline="central"
-    fill="#ffffff"
-    font-family="Poppins, ui-sans-serif, system-ui, sans-serif"
-    font-weight="700"
-    font-size="42"
-  >G</text>
+  <!-- Press Room favicon: a Flying-V guitar as a screenprint with a
+       pink "misregistration" offset behind the ink. -->
+  <defs>
+    <g id="flying-v">
+      <!-- headstock -->
+      <polygon points="26,5 39,7 38,12 26,11"/>
+      <!-- neck -->
+      <rect x="29.25" y="10.5" width="5.5" height="23"/>
+      <!-- V body with centre notch -->
+      <polygon points="25,32 10,56 32,47 54,56 39,32"/>
+    </g>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="14"
+        fill="#f6efda" stroke="#17120d" stroke-width="3"/>
+
+  <g transform="rotate(-15 32 32)">
+    <use href="#flying-v" x="1.6" y="1.6" fill="#ff2e88"/>
+    <use href="#flying-v" fill="#17120d"/>
+
+    <!-- strings -->
+    <g stroke="#fffdf4" stroke-width="0.9" stroke-linecap="round">
+      <line x1="30.4" y1="7.5" x2="30.4" y2="44"/>
+      <line x1="32" y1="7" x2="32" y2="46"/>
+      <line x1="33.6" y1="7.5" x2="33.6" y2="44"/>
+    </g>
+
+    <!-- tuning pegs -->
+    <g fill="#fffdf4">
+      <circle cx="28" cy="7.6" r="1"/>
+      <circle cx="32" cy="8.1" r="1"/>
+      <circle cx="36" cy="8.6" r="1"/>
+    </g>
+  </g>
 </svg>

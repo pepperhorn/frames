@@ -14,23 +14,42 @@ export const prerender = true;
     <title>Build Your Own Guitar Chord Frames</title>
   </head>
   <body class="min-h-screen bg-background text-foreground">
+    <span class="reg-mark reg-tl" aria-hidden="true"></span>
+    <span class="reg-mark reg-tr" aria-hidden="true"></span>
+    <span class="reg-mark reg-bl" aria-hidden="true"></span>
+    <span class="reg-mark reg-br" aria-hidden="true"></span>
+
     <main class="page-main mx-auto max-w-7xl px-6 py-16">
       <header class="page-header mb-12 flex flex-col gap-3">
-        <span class="page-eyebrow text-sm font-medium uppercase tracking-widest text-muted-foreground">
-          Creative Ranges Foundation
+        <span class="page-eyebrow">
+          Creative Ranges Foundation · Print Shop
         </span>
-        <h1 class="page-title text-5xl font-bold tracking-tight">
+        <h1 class="page-title">
           Build Your Own Guitar Frames
         </h1>
-        <p class="page-subtitle max-w-2xl text-lg text-muted-foreground">
-          Build chord frames or scale / melody visualizations for practice, work sheets, and more.
+        <p class="page-subtitle text-lg">
+          Pull a fresh proof: build chord frames or scale / melody
+          visualizations for practice, worksheets, and more — then preview
+          and run them off as SVG, PNG, or PDF.
         </p>
+        <div class="ink-swatches" aria-hidden="true">
+          <span style="--sw: var(--pop-pink)"></span>
+          <span style="--sw: var(--pop-orange)"></span>
+          <span style="--sw: var(--pop-yellow)"></span>
+          <span style="--sw: var(--pop-green)"></span>
+          <span style="--sw: var(--pop-cyan)"></span>
+          <span style="--sw: var(--pop-violet)"></span>
+          <span style="--sw: var(--ink)"></span>
+        </div>
       </header>
 
       <Workbench client:load />
 
-      <footer class="page-footer mt-16 border-t pt-6 text-sm text-muted-foreground">
-        Built with Astro {Astro.generator.replace("Astro v", "")}.
+      <footer class="page-footer mt-16 border-t-2 pt-6 text-sm">
+        Built by PepperHorn Studios ·
+        <a class="footer-link" href="https://github.com/pepperhorn" target="_blank" rel="noopener">
+          github.com/pepperhorn
+        </a>
       </footer>
     </main>
   </body>
