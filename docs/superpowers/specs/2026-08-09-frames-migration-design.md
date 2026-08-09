@@ -2,6 +2,11 @@
 
 **Date:** 2026-08-09
 **Status:** approved — design agreed, phases A and B ready for implementation planning
+> **Mirror — not the canonical copy.** This spec is owned by the chordl repo at
+> `docs/superpowers/specs/2026-08-09-frames-migration-design.md`, because it is a companion
+> to the boundary design that lives there. It is duplicated here so a frames developer does
+> not need the chordl repo checked out to read it. Change it in chordl first, then copy.
+
 **Context:** sub-project 2 of `docs/superpowers/specs/2026-08-08-chordl-guitar-boundary-design.md`, which named this work but deliberately left it undesigned until the package landed.
 
 ## Problem
