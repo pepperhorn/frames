@@ -117,130 +117,15 @@ export const BASS_PRESETS: StaticPreset[] = [
     },
   },
 ];
-
 /**
- * Beginner top-3-string guitar voicings (strings G, B, E — string 3,2,1).
- * Component is configured with strings: 3, so string 1 = high E, string 3 = G.
+ * Beginner top-3-string guitar voicings, re-exported from the package that owns them.
+ *
+ * These were vendored here on 2026-04-30 and never updated. chordl-guitar's table
+ * was authored later as a superset, so the local copy had fallen ten chords behind
+ * — Bm, F, D7, E7, A7, Am7, Dm7, Em7, Fmaj7 and Gm were all unreachable through
+ * /api/frame and the workbench. Re-exporting keeps that from drifting again.
+ *
+ * Note these presets already mute strings 4-6; the previous local copy carried
+ * strings 1-3 only and relied on each call site padding them.
  */
-export const GUITAR_TOP3_PRESETS: StaticPreset[] = [
-  {
-    key: "C",
-    suffix: "major",
-    chord: {
-      fingers: [
-        [3, 0],
-        [2, 1, "1"],
-        [1, 0],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "G",
-    suffix: "major",
-    chord: {
-      fingers: [
-        [3, 0],
-        [2, 0],
-        [1, 3, "3"],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "D",
-    suffix: "major",
-    chord: {
-      fingers: [
-        [3, 2, "1"],
-        [2, 3, "3"],
-        [1, 2, "2"],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "A",
-    suffix: "major",
-    chord: {
-      fingers: [
-        [3, 2, "1"],
-        [2, 2, "2"],
-        [1, 0],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "E",
-    suffix: "minor",
-    chord: {
-      fingers: [
-        [3, 0],
-        [2, 0],
-        [1, 0],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "A",
-    suffix: "minor",
-    chord: {
-      fingers: [
-        [3, 2, "2"],
-        [2, 1, "1"],
-        [1, 0],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "D",
-    suffix: "minor",
-    chord: {
-      fingers: [
-        [3, 2, "2"],
-        [2, 3, "3"],
-        [1, 1, "1"],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "E",
-    suffix: "major",
-    chord: {
-      fingers: [
-        [3, 1, "1"],
-        [2, 0],
-        [1, 0],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "C",
-    suffix: "7",
-    chord: {
-      fingers: [
-        [3, 0],
-        [2, 1, "1"],
-        [1, 3, "3"],
-      ],
-      barres: [],
-    },
-  },
-  {
-    key: "G",
-    suffix: "7",
-    chord: {
-      fingers: [
-        [3, 0],
-        [2, 0],
-        [1, 1, "1"],
-      ],
-      barres: [],
-    },
-  },
-];
+export { GUITAR_TOP3_PRESETS } from "@pepperhorn/chordl-guitar";

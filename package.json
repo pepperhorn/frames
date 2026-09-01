@@ -15,6 +15,7 @@
   "dependencies": {
     "@astrojs/node": "^10.1.1",
     "@astrojs/react": "^5.0.4",
+    "@pepperhorn/chordl-guitar": "^0.2.0",
     "@svgdotjs/svg.js": "^3.2.5",
     "@tailwindcss/vite": "^4.2.4",
     "@tombatossals/chords-db": "^0.5.1",

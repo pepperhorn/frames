@@ -26,3 +26,4 @@ pnpm-debug.log*
 # exported chord/scale frames at the repo root
 /*.png
 /*.svg
+.gstack/

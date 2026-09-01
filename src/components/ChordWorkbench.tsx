@@ -87,19 +87,9 @@ function buildPresets(instrumentId: InstrumentId): PresetOption[] {
   const list: StaticPreset[] = instrumentId === "bass" ? BASS_PRESETS : GUITAR_TOP3_PRESETS;
   return list.map((p) => {
     const title = `${p.key}${p.suffix === "major" ? "" : p.suffix}`;
-    let chord: Chord = { ...p.chord, title };
-    if (instrumentId === "guitar-top3") {
-      // Top-3 presets are written for strings 1-3 only; pad strings 4-6 as muted
-      // so the diagram renders the full 6-string neck (E A D G B E) with the
-      // unused low strings explicitly silenced.
-      const padded: Finger[] = [
-        ...chord.fingers,
-        [4, "x"],
-        [5, "x"],
-        [6, "x"],
-      ];
-      chord = { ...chord, fingers: padded };
-    }
+    // chordl-guitar's top-3 presets arrive with strings 4-6 already muted, so
+    // the full 6-string neck renders without padding them here.
+    const chord: Chord = { ...p.chord, title };
     return { key: p.key, suffix: p.suffix, label: title, chord };
   });
 }

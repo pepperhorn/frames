@@ -143,14 +143,9 @@ function resolveChord(
     );
   }
   const title = req.title ?? `${preset.key}${preset.suffix === "major" ? "" : preset.suffix}`;
-  let chord: Chord = { ...preset.chord, title };
-  if (instrument === "guitar-top3") {
-    chord = {
-      ...chord,
-      fingers: [...chord.fingers, [4, "x"], [5, "x"], [6, "x"]] as Finger[],
-    };
-  }
-  return chord;
+  // chordl-guitar's top-3 presets already mute strings 4-6, so there is nothing
+  // to pad here. Adding them again would emit each muted string twice.
+  return { ...preset.chord, title };
 }
 
 function scaleDotsToChord(
