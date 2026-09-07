@@ -1,11 +1,16 @@
 # frames → chordl-guitar Migration
 
 **Date:** 2026-08-09
-**Status:** approved — design agreed, phases A and B ready for implementation planning
+**Status:** approved — design agreed; both phase A and phase B have implementation plans. **Nothing has been implemented.**
 > **Mirror — not the canonical copy.** This spec is owned by the chordl repo at
 > `docs/superpowers/specs/2026-08-09-frames-migration-design.md`, because it is a companion
 > to the boundary design that lives there. It is duplicated here so a frames developer does
 > not need the chordl repo checked out to read it. Change it in chordl first, then copy.
+>
+> **This mirror is behind as of 2026-09-07.** The canonical copy has a progress note recording
+> that phases A-E are all unstarted, that `chordl-guitar` is now published to npm at 0.2.0, and
+> that frames has since taken a `^0.2.0` dependency on it (PR #5) out of phase order. Read the
+> chordl copy before acting on this one.
 
 **Context:** sub-project 2 of `docs/superpowers/specs/2026-08-08-chordl-guitar-boundary-design.md`, which named this work but deliberately left it undesigned until the package landed.
 

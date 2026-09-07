@@ -18,7 +18,17 @@
 - **These are characterization tests.** If behaviour looks wrong, pin it as-is and record it under "Observed oddities" in your report. Do not fix it, do not write the test as an aspiration, do not add `.skip`.
 - Where an expected value cannot be derived by reading the code with certainty (MIDI arrays, generated dot lists), **run the code, capture the actual output, and pin it** — with a comment saying the value was captured, not designed. Never guess a value and adjust until it passes.
 - Repo style: double quotes, 2-space indent.
-- Baseline: 10 test files, ~72 tests, zero failures. Confirm this before starting.
+- Baseline **as re-measured 2026-09-07**: 12 test files, 100 tests, zero failures. Confirm this before starting.
+
+  This plan was written on 2026-08-09 against 10 files / ~72 tests. The extra two files are `src/lib/__migration__/`, described below — they were untracked on disk for weeks and are only now landing.
+- **Read this before Task 4 (`tab/chordLookup`): part of it is already written.** `src/lib/__migration__/chord-lookup-golden.test.ts` and `fretboard-golden.test.ts` are golden-master tests covering `lookupChordFrets` across the whole shipped vocabulary plus the fretboard MIDI tables. They were written independently of this plan, do not follow its file naming, and overlap Task 4 substantially.
+
+  **Reconcile, do not duplicate.** Read them first and decide per assertion whether this plan's version adds anything. Two things they already pin that are worth knowing about:
+
+  - **`Db` and `Gb` are unfindable** — `rootAliases()` is called with `entry.key` (`"C#"`, `"F#"`) but keyed on `"Csharp"`, `"Fsharp"`, so five of its eight rows never match. A real user-facing defect, pinned as-is per the characterization rule above.
+  - **`entry.positions[0]` is taken unconditionally**, so canonical-position selection will change frets for some chords.
+
+  Neither is a reason to change this plan's other four tasks. `apiFrame.ts` in particular — the whole `/api/frame` HTTP contract — still has no tests at all, and Task 3 remains the most valuable thing here.
 - Work on a branch off the current default branch: `test/characterization`.
 
 ---
